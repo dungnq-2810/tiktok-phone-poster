@@ -18,7 +18,11 @@ video sang điện thoại qua ADB, mở app TikTok và bấm đăng như ngư�
 ## Chuẩn bị trên PC
 
 - Cài Python 3.11+ (nhớ tick "Add python.exe to PATH").
-- Lần đầu chạy `run_poster.bat` sẽ tự cài thư viện (`uiautomator2`).
+- Sau đó chỉ cần **bấm đúp `run_poster.bat`**: lần đầu nó tự tạo môi trường
+  riêng (`.venv`) + cài thư viện, rồi hiện menu chọn số:
+  `1` cài agent lên điện thoại · `2` test mở TikTok + lướt · `3` đăng thử
+  (dry-run) · `4` đăng thật. Các lệnh `python ...` dưới đây là đường gõ tay
+  tương đương cho ai thích dùng terminal.
 
 ## Cài agent lên điện thoại (1 lần, qua USB)
 
