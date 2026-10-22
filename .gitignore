@@ -1,0 +1,8 @@
+__pycache__/
+outbox/
+errors/
+_done/
+_failed/
+test_scroll.png
+dryrun_*.png
+*.zip
