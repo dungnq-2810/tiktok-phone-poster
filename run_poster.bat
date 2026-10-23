@@ -1,26 +1,26 @@
 @echo off
 chcp 65001 >nul
-cd /d %~dp0
-set PY=.venv\Scripts\python.exe
+cd /d "%~dp0"
+title TikTok Phone Poster
 
-rem --- Lan chay dau: tu tao moi truong rieng + cai thu vien ---
-if not exist %PY% (
-  echo [Setup] Dang tao moi truong Python rieng (.venv)...
-  where python >nul 2>nul || (echo Loi: chua co Python. Cai Python 3.11+ truoc, nho tick "Add python.exe to PATH". & pause & exit /b 1)
-  python -m venv .venv || (echo Loi: tao .venv that bai. & pause & exit /b 1)
-  %PY% -m pip install --upgrade pip >nul 2>nul
-  %PY% -m pip install -r requirements.txt || (echo Loi: cai thu vien that bai. & pause & exit /b 1)
-  echo [Setup] Xong.
-)
+set "PY=.venv\Scripts\python.exe"
 
-rem --- Neu co tham so thi chay thang phone_poster.py voi tham so do ---
-if not "%~1"=="" (
-  %PY% phone_poster.py %*
-  pause
-  exit /b
-)
+if exist "%PY%" goto READY
 
-:menu
+echo [Setup] Lan chay dau tien - dang cai dat...
+where python >nul 2>nul
+if errorlevel 1 goto NOPYTHON
+python -m venv .venv
+if errorlevel 1 goto VENVFAIL
+"%PY%" -m pip install --upgrade pip
+"%PY%" -m pip install -r requirements.txt
+if errorlevel 1 goto PIPFAIL
+echo [Setup] Cai dat xong.
+
+:READY
+if not "%~1"=="" goto RUNARGS
+
+:MENU
 echo.
 echo ============ TikTok Phone Poster ============
 echo  1. Cai agent len dien thoai (lam 1 lan, cam USB)
@@ -29,12 +29,32 @@ echo  3. Dang thu - dry-run (khong bam nut Dang)
 echo  4. Dang that (video trong thu muc outbox)
 echo  0. Thoat
 echo =============================================
-set /p CH=Chon so roi bam Enter:
-if "%CH%"=="1" %PY% phone_poster.py --init
-if "%CH%"=="2" %PY% test_open_scroll.py
-if "%CH%"=="3" %PY% phone_poster.py --dir "%CD%\outbox" --dry-run
-if "%CH%"=="4" %PY% phone_poster.py --dir "%CD%\outbox"
-if "%CH%"=="0" exit /b
+set /p "CH=Chon so roi bam Enter: "
+if "%CH%"=="1" "%PY%" phone_poster.py --init
+if "%CH%"=="2" "%PY%" test_open_scroll.py
+if "%CH%"=="3" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run
+if "%CH%"=="4" "%PY%" phone_poster.py --dir "%CD%\outbox"
+if "%CH%"=="0" goto END
 echo.
 pause
-goto menu
+goto MENU
+
+:RUNARGS
+"%PY%" phone_poster.py %*
+goto END
+
+:NOPYTHON
+echo Loi: May chua co Python. Cai Python 3.11+ tai python.org, nho tick o "Add python.exe to PATH", roi chay lai file nay.
+goto END
+
+:VENVFAIL
+echo Loi: Tao moi truong ao (.venv) that bai.
+goto END
+
+:PIPFAIL
+echo Loi: Cai thu vien that bai - kiem tra ket noi mang roi chay lai.
+goto END
+
+:END
+echo.
+pause
