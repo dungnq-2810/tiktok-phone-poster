@@ -47,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-20"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-21"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -211,9 +211,12 @@ def _try_click(d, variants, timeout=6.0, exact_first=True, region=None):
                             if not el.exists(timeout=0.3):
                                 continue
                             try:
-                                bounds = (el.info or {}).get("bounds")
+                                info = el.info or {}
                             except Exception:
-                                bounds = None
+                                info = {}
+                            if _is_system_el(info):
+                                continue  # nut he thong (vd Home cua systemui)
+                            bounds = info.get("bounds")
                             if not _in_region(bounds, region, w, h):
                                 continue
                             if _tap_human(d, el, label=f"'{v}'"):
@@ -376,25 +379,63 @@ UI_ROLE_VARIANTS = {
 }
 
 
+def _is_system_el(info):
+    """Node của hệ thống Android (thanh điều hướng...) — không bao giờ là
+    nút của TikTok. Scan feed bắt được: nút Home của systemui (desc 'Home')
+    bị nhận nhầm thành tab Home của TikTok, bấm vào là thoát app."""
+    try:
+        for k in ("package", "resourceId", "resource-id"):
+            v = (info or {}).get(k) or ""
+            if "systemui" in str(v):
+                return True
+    except Exception:
+        pass
+    return False
+
+
 def _match_role(elements, variants):
     """Element khop tot nhat cho 1 role trong list da distill: khop chinh
-    xac (text/desc) + clickable truoc, roi moi toi Contains."""
+    xac (text/desc) + clickable truoc, roi moi toi Contains. Bo qua element
+    cua systemui ngay tu dau (nut Home he thong khong phai tab Home)."""
+    els = [el for el in elements
+           if not (el.get("res") or "").startswith("com.android.systemui")]
     for want_click in (True, False):
         for v in variants:
-            for el in elements:
+            for el in els:
                 if want_click and not el.get("clickable"):
                     continue
                 if el.get("text") == v or el.get("desc") == v:
                     return el
     for want_click in (True, False):
         for v in variants:
-            for el in elements:
+            for el in els:
                 if want_click and not el.get("clickable"):
                     continue
                 if v and (v in (el.get("text") or "")
                           or v in (el.get("desc") or "")):
                     return el
     return None
+
+
+def ui_roles_report():
+    """Role -> element tool sẽ bấm, tính từ TẤT CẢ file map đã quét (không
+    cần quét lại). Cùng logic chọn như _mapped_selector: resource-id thì
+    lấy luôn, không thì text/desc đầu tiên."""
+    report = {}
+    for role, variants in UI_ROLE_VARIANTS.items():
+        best = None
+        for screen in sorted(load_ui_map()):
+            el = _match_role(load_ui_map()[screen], variants)
+            if not el:
+                continue
+            if el.get("res"):
+                best = el
+                break
+            if best is None:
+                best = el
+        if best is not None:
+            report[role] = best
+    return report
 
 
 def scan_ui_screen(d, name):
@@ -1682,6 +1723,9 @@ def main():
     ap.add_argument("--strict-ui", action="store_true",
                     help="chế độ chặt: không bấm tọa độ dự phòng, tìm element "
                          "không thấy thì báo lỗi kèm dump thay vì bấm bừa")
+    ap.add_argument("--ui-roles", action="store_true",
+                    help="in role -> element tool sẽ bấm, tính từ các file map "
+                         "đã quét trong ui_map/ (không cần quét lại)")
     args = ap.parse_args()
     log(f"TikTok Phone Poster, ban {VERSION}")
 
@@ -1717,6 +1761,22 @@ def main():
                     f"bounds={el['bounds']}")
             else:
                 log(f"   {role}: (không thấy trong màn này)")
+        return
+
+    if args.ui_roles:
+        report = ui_roles_report()
+        if not report:
+            log("Chưa có file map nào trong ui_map/ — chạy mục 11 quét trước.")
+            return
+        log("Role -> element tool sẽ bấm (tính từ file map đã quét):")
+        for role in UI_ROLE_VARIANTS:
+            el = report.get(role)
+            if el:
+                log(f"   {role}: text={el['text']!r} desc={el['desc']!r} "
+                    f"res={el['res']!r} clickable={el['clickable']} "
+                    f"bounds={el['bounds']}")
+            else:
+                log(f"   {role}: (không thấy trong file map nào)")
         return
 
     if args.set_niche:

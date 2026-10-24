@@ -12,7 +12,10 @@ class FakeEl:
         self.dev, self.key = dev, key
     @property
     def info(self):
-        return {"bounds": self.dev.bounds_for(self.key)}
+        d = {"bounds": self.dev.bounds_for(self.key)}
+        if self.key in self.dev.sys_keys:
+            d["package"] = "com.android.systemui"
+        return d
     def exists(self, timeout=0):
         return self.dev.el_exists(self.key)
     def click(self):
@@ -43,6 +46,7 @@ class FakeDevice:
         self.stuck_video = False  # True = vuốt không đổi video (giả lập kẹt 1 video)
         self.feed_author = None   # @ tác giả video đang xem ở FYP (nửa dưới màn hình)
         self.no_profile = False   # True = tab Profile không tồn tại (test strict mode)
+        self.sys_keys = set()     # key nào mang package systemui (test bỏ qua node hệ thống)
         self._auto_i = 0          # đếm riêng cho hộp tự động (không tính hộp định sẵn)
         self._boxes = {           # nút điều hướng ở đúng vùng như TikTok thật
             "Home": {"left": 100, "top": 2200, "right": 260, "bottom": 2350},
@@ -662,5 +666,37 @@ except pp.JobError:
     print("strict_ui OK (luoi khong co o video -> loi, khong bam bua)")
 pp.STRICT_UI = False
 assert pp._click_first_gallery_item(devG2) is True
+
+# --- matcher bo qua node he thong: nut Home cua systemui khong phai tab Home
+assert pp._is_system_el({"package": "com.android.systemui"}) is True
+assert pp._is_system_el({"resourceId": "com.android.systemui:id/home"}) is True
+assert pp._is_system_el({"bounds": [0, 0, 100, 100]}) is False
+els = [
+    {"text": "", "desc": "Home", "res": "com.android.systemui:id/home",
+     "class": "x", "clickable": True, "bounds": [304, 1424, 414, 1520]},
+    {"text": "", "desc": "Home, Tab 1 of 5",
+     "res": "com.zhiliaoapp.musically:id/aaa",
+     "class": "x", "clickable": True, "bounds": [0, 1326, 144, 1424]},
+]
+m = pp._match_role(els, ["Home"])
+assert m["res"] == "com.zhiliaoapp.musically:id/aaa", m
+print("match_role OK (bo qua nut Home cua systemui)")
+
+_mapdir2 = tmp / "ui_map2"
+_os.environ["PHONE_POSTER_UI_MAP"] = str(_mapdir2)
+_mapdir2.mkdir(exist_ok=True)
+(_mapdir2 / "feed.json").write_text(json.dumps({"screen": "feed", "elements": els},
+    ensure_ascii=False), encoding="utf-8")
+pp._UI_MAP_CACHE = None
+rep = pp.ui_roles_report()
+assert rep["home_tab"]["res"] == "com.zhiliaoapp.musically:id/aaa", rep
+print("ui_roles_report OK (tinh tu file map, khong can quet lai)")
+
+devY = FakeDevice()
+devY.sys_keys.add("Home")
+assert pp._try_click(devY, ["Home"], timeout=0.5) is False
+devY2 = FakeDevice()
+assert pp._try_click(devY2, ["Home"], timeout=0.5) is True
+print("try_click OK (bo qua node he thong, chi bam nut cua app)")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

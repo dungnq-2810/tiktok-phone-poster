@@ -45,6 +45,7 @@ echo  8. Config acc theo ngach (lay danh sach truoc)
 echo  9. Mo giao dien GUI
 echo 10. Nuoi TAT CA acc - moi acc ~10p, theo ngach da config
 echo 11. Quet cay UI man hinh hien tai (luu file map ui_map)
+echo 12. Kiem tra role tu file map da quet (khong can quet lai)
 echo  0. Thoat
 echo =============================================
 set /p "CH=Chon so roi bam Enter: "
@@ -59,6 +60,7 @@ if "%CH%"=="8" goto M8
 if "%CH%"=="9" goto M9
 if "%CH%"=="10" goto M10
 if "%CH%"=="11" goto M11
+if "%CH%"=="12" goto M12
 if "%CH%"=="0" goto END
 goto MENUDONE
 
@@ -115,6 +117,10 @@ goto MENUDONE
 set /p "SCAN=Ten man hinh (vd feed, profile, sheet, gallery, editor, caption): "
 if "%SCAN%"=="" goto MENUDONE
 "%PY%" phone_poster.py --scan-ui "%SCAN%"
+goto MENUDONE
+
+:M12
+"%PY%" phone_poster.py --ui-roles
 goto MENUDONE
 
 :MENUDONE
