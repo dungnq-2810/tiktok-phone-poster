@@ -35,6 +35,7 @@ class FakeDevice:
         self.screen_on_flag = True
         self.keyguard = "none"
         self.current_pkg = ""
+        self.one_account = False  # app chỉ đăng nhập 1 acc (sheet chỉ có acc_one)
         self._boxes = {}            # mỗi phần tử một khung tọa độ riêng (như máy thật)
     @property
     def info(self):
@@ -87,7 +88,13 @@ class FakeDevice:
         if self.current_pkg != "com.zhiliaoapp.musically":
             return ('<hierarchy><node text="Vuốt lên để mở khóa" '
                     'bounds="[340,1200][740,1300]"/></hierarchy>')
-        if self.sheet_open:  # bảng chuyển tài khoản: 2 dòng acc + Thêm tài khoản
+        if self.sheet_open:  # bảng chuyển tài khoản: các dòng acc + Thêm tài khoản
+            if self.one_account:
+                return ('<hierarchy>'
+                        '<node text="Acc One" bounds="[300,700][700,780]"/>'
+                        '<node text="@acc_one" bounds="[300,780][700,840]"/>'
+                        '<node text="Add account" bounds="[300,1100][700,1180]"/>'
+                        '</hierarchy>')
             return ('<hierarchy>'
                     '<node text="Acc One" bounds="[300,700][700,780]"/>'
                     '<node text="@acc_one" bounds="[300,780][700,840]"/>'
@@ -256,5 +263,13 @@ except pp.JobError as e:
     assert "MÀN HÌNH KHÓA" in str(e), e
     print("list_logged_in_accounts OK (điện thoại khóa -> lỗi rõ KHÓA màn hình, "
           "không còn lỗi mơ hồ 'không đọc được @username')")
+
+# app chỉ có 1 acc: bảng mở được nhưng chỉ thấy acc đang dùng (không crash,
+# không báo thiếu sai — đó là trạng thái thật của app này)
+dev1 = FakeDevice()
+dev1.one_account = True
+cur1, acc1 = pp.list_logged_in_accounts(dev1)
+assert cur1 == "acc_one" and acc1 == ["acc_one"], (cur1, acc1)
+print("list_logged_in_accounts OK (app chỉ có 1 acc -> trả đúng [acc đang dùng])")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

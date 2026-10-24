@@ -344,14 +344,33 @@ def current_account(d):
     raise JobError("không đọc được @username ở trang Hồ sơ")
 
 
+TXT_SWITCHER = ["Switch account", "Switch accounts", "Chuyển tài khoản",
+                "Đổi tài khoản", "Manage accounts", "Quản lý tài khoản"]
+
+
 def _switcher_open(d):
     handles = {h for h, _y in _handles_on_screen(d)}
-    return len(handles) >= 2 or _exists(d, TXT_ADD_ACCOUNT)
+    return (len(handles) >= 2 or _exists(d, TXT_ADD_ACCOUNT)
+            or _exists(d, TXT_SWITCHER))
+
+
+def _wait_switcher(d, timeout=3.0):
+    """Chờ bảng chuyển tài khoản hiện ra (sheet mở có độ trễ)."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if _switcher_open(d):
+            return True
+        time.sleep(0.5)
+    return _switcher_open(d)
 
 
 def _open_switcher(d):
-    """Mở bảng chuyển tài khoản từ trang Hồ sơ: chạm vào tên hiển thị ở thanh
-    trên cùng (có mũi tên xổ xuống). Dự phòng: nhấn giữ tab Hồ sơ."""
+    """Mở bảng chuyển tài khoản từ trang Hồ sơ, thử lần lượt 3 cách:
+    (1) chạm tên hiển thị ở thanh trên cùng — tên có thể nằm ở text hoặc
+    content-desc tùy bản TikTok; (2) chạm thẳng vào giữa thanh trên cùng
+    (chỗ tên + mũi tên xổ xuống) — không phụ thuộc vào nút nào đọc được;
+    (3) nhấn giữ tab Hồ sơ — khớp cả chứa chuỗi vì content-desc của tab
+    thường là 'Profile, Tab 5 of 5' chứ không đúng 'Profile'."""
     _goto_profile(d)
     if _switcher_open(d):
         return True
@@ -360,7 +379,8 @@ def _open_switcher(d):
     name, best_w = None, -1
     if root_el is not None:
         for node in root_el.iter("node"):
-            text = (node.get("text") or "").strip()
+            text = ((node.get("text") or "").strip()
+                    or (node.get("content-desc") or "").strip())
             if not text or text.startswith("@"):
                 continue
             b = _node_bounds(node)
@@ -370,22 +390,39 @@ def _open_switcher(d):
             if b[1] < 0.14 * h and 0.25 * w < cx < 0.75 * w and (b[2] - b[0]) > best_w:
                 best_w, name = b[2] - b[0], text
     if name:
+        for kwargs in ({"text": name}, {"description": name},
+                       {"textContains": name}):
+            try:
+                el = d(**kwargs)
+                if el.exists(timeout=0.5) and _tap_human(d, el):
+                    jitter(1.0, 2.0)
+                    if _wait_switcher(d):
+                        return True
+            except Exception:
+                continue
+    for y in (0.055, 0.08):  # chạm thẳng giữa thanh trên cùng
         try:
-            el = d(text=name)
-            if el.exists(timeout=0.5) and _tap_human(d, el):
-                jitter(1.5, 2.5)
-                if _switcher_open(d):
-                    return True
+            d.click(w // 2, int(h * y))
         except Exception:
             pass
+        jitter(1.0, 2.0)
+        if _wait_switcher(d):
+            return True
+        try:
+            d.press("back")
+        except Exception:
+            pass
+        jitter(0.8, 1.5)
     for kwargs in ({"description": "Profile"}, {"text": "Profile"},
-                   {"description": "Hồ sơ"}, {"text": "Hồ sơ"}):
+                   {"description": "Hồ sơ"}, {"text": "Hồ sơ"},
+                   {"descriptionContains": "Profile"}, {"textContains": "Profile"},
+                   {"descriptionContains": "Hồ sơ"}, {"textContains": "Hồ sơ"}):
         try:
             el = d(**kwargs)
             if el.exists(timeout=0.3):
                 el.long_click()
-                jitter(1.5, 2.5)
-                if _switcher_open(d):
+                jitter(1.0, 2.0)
+                if _wait_switcher(d):
                     return True
                 break
         except Exception:
@@ -393,12 +430,22 @@ def _open_switcher(d):
     return _switcher_open(d)
 
 
-def list_logged_in_accounts(d):
+def list_logged_in_accounts(d, root=None):
     """Trả về (acc đang mở, [mọi acc đã đăng nhập trong app, theo thứ tự
-    trong bảng chuyển tài khoản])."""
+    trong bảng chuyển tài khoản]). Phân biệt rõ 2 trường hợp 'chỉ thấy 1':
+    bảng không mở được (danh sách có thể thiếu — lúc này lưu luôn ảnh chụp +
+    cấu trúc màn hình để chẩn đoán) vs bảng mở ra mà chỉ có 1 acc (tức app
+    này thực sự chỉ đăng nhập 1 acc — các acc khác nếu có thì đang nằm ở
+    Second Space/Dual App, tức app khác, tool không đọc tới)."""
     _open_tiktok(d)
     current = current_account(d)
     if not _open_switcher(d):
+        log("⚠️ Không mở được bảng chuyển tài khoản — chỉ đọc được acc đang "
+            "mở, danh sách có thể thiếu.")
+        if root is not None:
+            where = _dump_debug(d, root, "account-switcher")
+            log(f"   Ảnh chụp + cấu trúc màn hình đã lưu ở {where} — gửi thư "
+                "mục này cho Muse để xem nút chuyển acc trên máy này nằm ở đâu.")
         return current, [current]
     handles = []
     for handle, _y in _handles_on_screen(d):
@@ -409,6 +456,10 @@ def list_logged_in_accounts(d):
     except Exception:
         pass
     jitter(0.8, 1.5)
+    if len(handles) <= 1:
+        log("ℹ️ Bảng chuyển tài khoản mở được nhưng trong app này chỉ có 1 acc "
+            "đã đăng nhập. Acc khác nếu có thì đang ở Second Space/Dual App "
+            "(app khác) — đăng nhập nó vào app TikTok này rồi chạy lại menu 5.")
     return current, handles or [current]
 
 
@@ -656,7 +707,8 @@ def main():
             sys.exit(1)
         try:
             if args.list_accounts:
-                current, accounts = list_logged_in_accounts(d)
+                current, accounts = list_logged_in_accounts(
+                    d, Path(args.dir).resolve())
                 log(f"Tổng {len(accounts)} acc đã đăng nhập trong app TikTok:")
                 for a in accounts:
                     mark = "  ← đang mở" if a == current else ""
