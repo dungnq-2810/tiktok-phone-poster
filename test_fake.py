@@ -86,6 +86,8 @@ class FakeDevice:
         self.calls.append(("press", key))
         if key == "back":
             self.sheet_open = False
+    def double_click(self, x, y):
+        self.calls.append(("double_click", x, y))
     def dump_hierarchy(self):
         if self.current_pkg != "com.zhiliaoapp.musically":
             return ('<hierarchy><node text="Vuốt lên để mở khóa" '
@@ -126,6 +128,10 @@ class FakeDevice:
         return el
     # -- behaviour --
     def el_exists(self, key):
+        if key in ("Tìm kiếm", "Search"):
+            return True  # nut tim kiem tren trang chu (de test duong tim kiem ngach)
+        if key in ("Home", "Trang chủ"):
+            return True  # tab Home (de test nurture khoi quay 3s tim Home)
         if key in ("Profile", "Hồ sơ"):
             return True
         if key in ("Acc One", "Acc Two"):
@@ -341,5 +347,22 @@ except pp.JobError as e:
     print("run_init OK (server chet han -> bao ro chay lai menu 1, khong traceback)")
 pp.subprocess.run = _real_run
 del sys.modules["uiautomator2"]
+
+# --- nuoi tu dong: xem het video roi luot (budget that ngan, sleep da mock)
+devN = FakeDevice()
+s = pp.nurture_session(devN, min_s=0.05, max_s=0.1, keywords=[], like_cap=2)
+assert s["watched"] >= 1, s
+assert s["likes"] <= 2, s
+assert any(c[0] == "swipe" for c in devN.calls), "nuoi phai luot feed"
+assert sum(1 for c in devN.calls if c[0] == "double_click") == s["likes"]
+print(f"nurture_session OK (FYP: xem {s['watched']} video, like {s['likes']} <= cap 2)")
+devN2 = FakeDevice()
+s2 = pp.nurture_session(devN2, min_s=0.05, max_s=0.1,
+                        keywords=["dashcam"], like_cap=0)
+assert s2["watched"] >= 6, s2  # 6 video tu ket qua tim kiem, chua tinh FYP
+assert s2["likes"] == 0, s2
+assert ("press", "enter") in devN2.calls, "phai go tu khoa roi Enter de tim kiem"
+assert not any(c[0] == "double_click" for c in devN2.calls), "like_cap=0 thi khong like"
+print(f"nurture_session OK (tim kiem ngach: xem {s2['watched']} video, khong like)")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

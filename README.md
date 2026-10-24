@@ -187,6 +187,26 @@ Lưu ý: config chỉ gán được cho acc đã đăng nhập trong app. Acc mu
 đăng nhập thì đăng nhập vào app trước, rồi chạy lại mục 8 là thấy nó trong
 danh sách.
 
+## Nuôi acc tự động (xem hết video rồi lướt)
+
+Mở `run_poster.bat` → mục **10** (hoặc nút 9 trong GUI): tool mở TikTok,
+về Home, rồi nuôi như người thật — xem mỗi video đủ lâu (phần lớn 15–45s
+là hết video ngắn, thỉnh thoảng xem dài 45–120s), thỉnh thoảng like bằng
+double-tap (tối đa 8 cái/phiên), rồi vuốt lên với vị trí/tốc độ ngẫu
+nhiên. Một phiên mặc định ~20–40 phút, Ctrl+C dừng lúc nào cũng được
+(vẫn in tổng kết). Nếu nhập từ khóa ngách (cách nhau bằng dấu phẩy, vd
+`dashcam,road rage`) thì đầu phiên tool tìm kiếm từng từ khóa và xem ~6
+video/từ để FYP học đúng ngách; mở tìm kiếm không được trên giao diện
+của bạn thì nó tự bỏ qua và nuôi bằng FYP, không crash phiên.
+
+Cố tình KHÔNG tự động 2 việc: **comment** và **follow**. Comment máy
+viết không ra ý thật và là tín hiệu spam dễ bị bắt nhất; follow cũng
+vậy. 2 việc đó làm tay: 1–2 comment thật/ngày, 2–3 follow/ngày. Mỗi lần
+chạy chỉ nuôi 1 acc; nuôi xong acc này nghỉ ít nhất 30 phút mới đổi acc
+khác; bật VPN trước khi mở TikTok. Tùy chọn dòng lệnh: `--nurture-min`,
+`--nurture-max` (giây/phiên), `--nurture-keywords`, `--nurture-likes`
+(0 = không like), `--account` để bắt buộc đúng acc.
+
 ## ADB qua Wi-Fi (rút cáp)
 
 Tool nói chuyện với điện thoại qua ADB nên rút cáp là mất kết nối, trừ khi

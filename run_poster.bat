@@ -43,6 +43,7 @@ echo  6. Doi acc thu (trong cac acc da dang nhap)
 echo  7. Chuyen sang ADB qua Wi-Fi (rut cap duoc)
 echo  8. Config acc theo ngach (lay danh sach truoc)
 echo  9. Mo giao dien GUI
+echo 10. Nuoi acc tu dong (xem + luot nhu nguoi that)
 echo  0. Thoat
 echo =============================================
 set /p "CH=Chon so roi bam Enter: "
@@ -55,6 +56,7 @@ if "%CH%"=="6" goto M6
 if "%CH%"=="7" goto M7
 if "%CH%"=="8" goto M8
 if "%CH%"=="9" goto M9
+if "%CH%"=="10" goto M10
 if "%CH%"=="0" goto END
 goto MENUDONE
 
@@ -98,6 +100,12 @@ goto MENUDONE
 
 :M9
 call gui.bat
+goto MENUDONE
+
+:M10
+set /p "ACC=Nuoi acc nao? (nhap username, de trong = acc dang mo): "
+set /p "KW=Tu khoa ngach, cach nhau bang dau phay (de trong = chi luot FYP): "
+"%PY%" phone_poster.py --nurture --account "%ACC%" --nurture-keywords "%KW%"
 goto MENUDONE
 
 :MENUDONE

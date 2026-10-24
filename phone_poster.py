@@ -11,6 +11,7 @@ của clipgen (mỗi story một folder con chứa video + caption) là chạy l
 
     python phone_poster.py --init            # cài agent lên điện thoại (USB, 1 lần)
     python phone_poster.py --wifi            # chuyển sang ADB qua Wi-Fi để rút cáp
+    python phone_poster.py --nurture --account username --nurture-keywords "dashcam,road rage"  # nuôi acc tự động ~20-40 phút: xem hết video rồi lướt
     python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app (+ ngách đã config)
     python phone_poster.py --config-niches   # lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu vào accounts.json
     python phone_poster.py --set-niche username B  # gán nhanh 1 acc vào ngách B
@@ -45,7 +46,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-13"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-14"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -63,6 +64,7 @@ TXT_DISMISS = ["Not now", "Để sau", "Skip", "Bỏ qua", "Later", "Lúc khác"
 TXT_UPLOAD_ERROR = ["Couldn't upload", "Không thể tải lên", "Upload failed",
                     "Tải lên thất bại", "Try again", "Thử lại"]
 TXT_HOME = ["Home", "Trang chủ"]
+TXT_SEARCH = ["Tìm kiếm", "Search"]
 TXT_PROFILE = ["Profile", "Hồ sơ"]
 TXT_ADD_ACCOUNT = ["Add account", "Thêm tài khoản"]
 TXT_VERIFY_BLOCK = ["Verify your identity", "Enter the code sent",
@@ -699,6 +701,109 @@ def ensure_account(d, target):
     return switch_account(d, target)
 
 
+# -------------------------------------------------------------- nurture ----
+def _watch_one(d, like_cap, likes_done):
+    """Xem 1 video như người thật rồi vuốt lên: xem đủ lâu (phần lớn
+    15-45s là hết video ngắn, thỉnh thoảng xem dài 45-120s), thỉnh thoảng
+    like bằng double-tap (tối đa like_cap/phiên), rồi vuốt với vị trí và
+    tốc độ ngẫu nhiên. Trả (likes_done mới, có like video này không)."""
+    w, h = d.window_size()
+    r = random.random()
+    if r < 0.6:
+        dwell = random.uniform(15.0, 45.0)
+    elif r < 0.9:
+        dwell = random.uniform(45.0, 75.0)
+    else:
+        dwell = random.uniform(75.0, 120.0)
+    time.sleep(dwell)
+    liked = False
+    if likes_done < like_cap and random.random() < 0.20:
+        try:
+            d.double_click(w // 2, h // 2)
+        except Exception:
+            pass
+        likes_done += 1
+        liked = True
+        jitter(0.5, 1.5)
+    x = int(w * random.uniform(0.40, 0.60))
+    d.swipe(x, int(h * 0.72), x + random.randint(-15, 15),
+            int(h * 0.28), random.uniform(0.3, 0.6))
+    jitter(0.5, 1.5)
+    return likes_done, liked
+
+
+def _nurture_search(d, keyword, like_cap, likes_done, watched, per_keyword=6):
+    """Mở tìm kiếm, gõ từ khóa ngách, xem vài video từ kết quả rồi quay
+    lại. Mở không được (giao diện khác bản) thì trả (..., False) để phiên
+    chính vẫn nuôi bằng FYP — 1 bước phụ không được crash cả phiên."""
+    try:
+        if not _try_click(d, TXT_SEARCH, timeout=3.0):
+            log("   (không mở được ô tìm kiếm trên giao diện này — bỏ qua, nuôi bằng FYP)")
+            return watched, likes_done, False
+        jitter(1.0, 2.0)
+        edits = d(className="android.widget.EditText")
+        if not edits.exists(timeout=3.0):
+            d.press("back")
+            return watched, likes_done, False
+        _type_human(d, edits, keyword)
+        jitter(1.0, 2.0)
+        d.press("enter")
+        jitter(2.0, 3.5)
+        for _ in range(per_keyword):
+            likes_done, _ = _watch_one(d, like_cap, likes_done)
+            watched += 1
+        d.press("back")
+        jitter(1.0, 2.0)
+        return watched, likes_done, True
+    except Exception as e:
+        log(f"   (tìm kiếm '{keyword}' lỗi: {e} — bỏ qua, nuôi bằng FYP)")
+        try:
+            d.press("back")
+        except Exception:
+            pass
+        return watched, likes_done, False
+
+
+def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
+    """Nuôi acc tự động như người thật: xem hết video rồi lướt.
+    - Mở TikTok, về Home.
+    - Nếu có từ khóa ngách: tìm kiếm từng từ khóa, xem ~6 video/từ để
+      FYP học đúng ngách (mở không được thì nuôi bằng FYP).
+    - Lướt FYP đến hết ngân sách thời gian (~20-40 phút mặc định).
+    - Like thưa bằng double-tap (tối đa like_cap/phiên).
+    KHÔNG tự comment, KHÔNG tự follow: 2 hành động đó cần ý thật và là
+    tín hiệu spam dễ bị bắt nhất — để người làm tay (1-2 comment/ngày,
+    2-3 follow/ngày). Ctrl+C dừng phiên nhưng vẫn in tổng kết.
+    Trả dict tổng kết {'watched', 'likes', 'minutes'}."""
+    budget = random.uniform(min_s, max_s)
+    log(f"→ Bắt đầu nuôi tự động ~{budget / 60:.0f} phút: xem hết video rồi "
+        f"lướt, like tối đa {like_cap}/phiên, không comment/follow tự động.")
+    _open_tiktok(d)
+    _try_click(d, TXT_HOME, timeout=3.0)
+    jitter(2.0, 3.0)
+    watched = 0
+    likes_done = 0
+    end = time.time() + budget
+    try:
+        for kw in (keywords or []):
+            kw = kw.strip()
+            if not kw:
+                continue
+            log(f"→ Tìm kiếm ngách: {kw}")
+            watched, likes_done, _ = _nurture_search(
+                d, kw, like_cap, likes_done, watched)
+        while time.time() < end:
+            likes_done, _ = _watch_one(d, like_cap, likes_done)
+            watched += 1
+            if watched % 10 == 0:
+                log(f"   ... đã xem {watched} video, like {likes_done}")
+    except KeyboardInterrupt:
+        log("   (đã dừng nuôi bằng Ctrl+C)")
+    log(f"✅ Nuôi xong: xem {watched} video, like {likes_done} "
+        f"trong ~{budget / 60:.0f} phút.")
+    return {"watched": watched, "likes": likes_done, "minutes": budget / 60}
+
+
 # -------------------------------------------------------------- one post ----
 def _type_human(d, field, text):
     """Gõ caption từng cụm 2–6 ký tự với nhịp ngẫu nhiên — giống tay người gõ,
@@ -978,6 +1083,16 @@ def main():
                     help="gán ngách cho 1 acc (vd: --set-niche sandracruzkay183 B)")
     ap.add_argument("--config-niches", action="store_true",
                     help="lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu")
+    ap.add_argument("--nurture", action="store_true",
+                    help="nuôi acc tự động: xem hết video rồi lướt như người thật")
+    ap.add_argument("--nurture-min", type=int, default=1200,
+                    help="nuôi tối thiểu mỗi phiên (giây, mặc định 1200 = 20 phút)")
+    ap.add_argument("--nurture-max", type=int, default=2400,
+                    help="nuôi tối đa mỗi phiên (giây, mặc định 2400 = 40 phút)")
+    ap.add_argument("--nurture-keywords", default="",
+                    help="từ khóa ngách cách nhau bằng dấu phẩy (để trống = chỉ lướt FYP)")
+    ap.add_argument("--nurture-likes", type=int, default=8,
+                    help="like tối đa mỗi phiên nuôi (0 = không like)")
     args = ap.parse_args()
     log(f"TikTok Phone Poster, ban {VERSION}")
 
@@ -1040,6 +1155,29 @@ def main():
             log("✅ Đã lưu config ngách.")
         else:
             log("Không đổi gì.")
+        return
+
+    if args.nurture:
+        try:
+            d = _connect(args.serial)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
+        if args.account:
+            try:
+                ensure_account(d, args.account)
+            except Exception as e:
+                where = _dump_debug(d, Path(args.dir).resolve(), "account")
+                log(f"❌ Không đảm bảo được đúng acc @{_norm_user(args.account)}: {e} "
+                    f"— ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
+                sys.exit(1)
+        keywords = [k.strip() for k in args.nurture_keywords.split(",") if k.strip()]
+        try:
+            nurture_session(d, min_s=args.nurture_min, max_s=args.nurture_max,
+                            keywords=keywords, like_cap=args.nurture_likes)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
         return
 
     if args.list_accounts or args.switch_to:
