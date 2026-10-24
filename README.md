@@ -34,6 +34,10 @@ python phone_poster.py --init
 Lệnh này cài agent điều khiển lên điện thoại, kiểm tra kết nối và mở thử
 TikTok. Sau đó có thể rút cáp nếu đã bật ADB qua Wi-Fi
 (`adb tcpip 5555` rồi `--serial 192.168.x.x:5555`); không thì cứ cắm USB.
+Nếu cuối lệnh báo không nói chuyện được với server thì đừng lo: server
+vừa cài hay khởi động lại, tool tự thử lại 5 lần; vẫn rớt thì chạy lại
+menu 1 một lần nữa, và nếu vẫn rớt thì cho app ATX chạy pin "Không giới
+hạn" + khóa nó trong đa nhiệm (MIUI hay tắt app agent chạy nền).
 
 ## Test mức 1: mở app + lướt feed (nên chạy đầu tiên)
 

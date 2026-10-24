@@ -307,5 +307,39 @@ sys.argv = _old_argv
 assert pp.load_niches()["acc_two"] == "dashcam", pp.load_niches()
 print("--set-niche OK (ghi qua main, khong can dien thoai)")
 del os.environ["PHONE_POSTER_CONFIG"]
+
+# run_init: server rot 2 lan dau roi moi tra info -> phai thu lai, khong
+# traceback; server chet han -> bao ro (khong traceback)
+import types
+class _FlakyDev:
+    def __init__(self, fails):
+        self.left = fails
+    @property
+    def info(self):
+        if self.left > 0:
+            self.left -= 1
+            raise ConnectionError("Remote end closed connection without response")
+        return {"productName": "olive", "sdkInt": 29,
+                "displayWidth": 720, "displayHeight": 1520}
+    def app_start(self, *a, **k):
+        pass
+_fake_u2 = types.ModuleType("uiautomator2")
+_flaky = _FlakyDev(2)  # cung 1 may: rot 2 lan dau roi moi tra info
+_fake_u2.connect = lambda serial="": _flaky
+sys.modules["uiautomator2"] = _fake_u2
+_real_run = pp.subprocess.run
+pp.subprocess.run = lambda *a, **k: None
+pp.run_init("")
+print("run_init OK (server rot 2 lan dau -> thu lai roi moi OK, khong traceback)")
+_flaky_dead = _FlakyDev(99)
+_fake_u2.connect = lambda serial="": _flaky_dead
+try:
+    pp.run_init("")
+    raise AssertionError("server chet han ma van OK la sai")
+except pp.JobError as e:
+    assert "menu 1" in str(e), e
+    print("run_init OK (server chet han -> bao ro chay lai menu 1, khong traceback)")
+pp.subprocess.run = _real_run
+del sys.modules["uiautomator2"]
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

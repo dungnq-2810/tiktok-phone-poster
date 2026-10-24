@@ -45,7 +45,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-12"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-13"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -916,8 +916,27 @@ def run_init(serial):
         cmd += ["--serial", serial]
     subprocess.run(cmd, check=False)
     import uiautomator2 as u2
-    d = u2.connect(serial or "")
-    info = d.info
+    # Server trên máy vừa được cài xong hay khởi động lại / bị MIUI tắt ngay
+    # sau đó (đúng bệnh trong log: ping OK rồi d.info rớt kết nối) — thử
+    # lại vài lần thay vì văng traceback ngay lần đầu.
+    info = None
+    last_err = None
+    for attempt in range(1, 6):
+        try:
+            d = u2.connect(serial or "")
+            info = d.info
+            break
+        except Exception as e:
+            last_err = e
+            log(f"   Chờ server trên máy ổn định lại (lần {attempt}/5)...")
+            time.sleep(3)
+    if info is None:
+        raise JobError(
+            "cài agent xong nhưng không nói chuyện được với server trên máy "
+            f"({last_err}). Server đã chạy rồi nhưng rớt ngay sau khi cài — "
+            "thường do MIUI tắt app agent chạy nền. Thử chạy lại menu 1 một "
+            "lần nữa; nếu vẫn rớt thì vào Cài đặt > Pin cho app ATX chọn "
+            "'Không giới hạn' và khóa nó trong đa nhiệm, rồi chạy lại menu 1.")
     log(f"Kết nối OK: {info.get('productName')} | Android API {info.get('sdkInt')} "
         f"| màn hình {info.get('displayWidth')}x{info.get('displayHeight')}")
     log("Mở thử TikTok trong 3 giây...")
@@ -963,7 +982,11 @@ def main():
     log(f"TikTok Phone Poster, ban {VERSION}")
 
     if args.init:
-        run_init(args.serial)
+        try:
+            run_init(args.serial)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
         return
 
     if args.wifi:
