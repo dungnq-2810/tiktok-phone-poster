@@ -453,5 +453,68 @@ pp.main()  # khong can dien thoai, chi in danh sach da luu
 sys.argv = _old_argv
 print("--known-accounts OK (in duoc ma khong can mo dien thoai)")
 del os.environ["PHONE_POSTER_KNOWN"]
+
+# --- tu khoa ngach (master setting cho nuoi tat ca)
+kw_f = tmp / "niche-kw-test.json"
+os.environ["PHONE_POSTER_NICHE_KW"] = str(kw_f)
+assert pp.keywords_for_niche("") == [] and pp.keywords_for_niche("B") == []
+assert pp.keywords_for_niche("dashcam") == ["dashcam"]  # nhan dai -> tu la tu khoa
+_old_argv = sys.argv
+sys.argv = ["phone_poster.py", "--set-niche-keywords", "A", "loyalty test, street fight"]
+pp.main()
+sys.argv = _old_argv
+assert pp.load_niche_keywords() == {"A": ["loyalty test", "street fight"]}
+assert pp.keywords_for_niche("A") == ["loyalty test", "street fight"]
+print("keywords_for_niche + --set-niche-keywords OK (entry rieng thang nhan)")
+del os.environ["PHONE_POSTER_NICHE_KW"]
+
+# --- config-niches 2 pha qua main (mock input + may gia): gan ngach tung
+# acc roi hoi tu khoa tung ngach
+import builtins
+cfg2 = tmp / "accounts2.json"
+kw2 = tmp / "niche-kw2.json"
+known2 = tmp / "known2.json"
+os.environ["PHONE_POSTER_CONFIG"] = str(cfg2)
+os.environ["PHONE_POSTER_NICHE_KW"] = str(kw2)
+os.environ["PHONE_POSTER_KNOWN"] = str(known2)
+_fake_u2c = types.ModuleType("uiautomator2")
+_fake_u2c.connect = lambda serial="": FakeDevice()
+sys.modules["uiautomator2"] = _fake_u2c
+_inputs = iter(["A", "dashcam", "loyalty test, street fight", "dashcam, road rage"])
+_real_input = builtins.input
+builtins.input = lambda prompt="": next(_inputs)
+_old_argv = sys.argv
+sys.argv = ["phone_poster.py", "--config-niches", "--dir", str(tmp)]
+pp.main()
+sys.argv = _old_argv
+builtins.input = _real_input
+del sys.modules["uiautomator2"]
+assert pp.load_niches() == {"acc_one": "A", "acc_two": "dashcam"}, pp.load_niches()
+assert pp.load_niche_keywords() == {"A": ["loyalty test", "street fight"],
+                                    "dashcam": ["dashcam", "road rage"]}, pp.load_niche_keywords()
+print("config-niches OK (2 pha: gan ngach + tu khoa tung ngach)")
+del os.environ["PHONE_POSTER_CONFIG"]
+del os.environ["PHONE_POSTER_NICHE_KW"]
+del os.environ["PHONE_POSTER_KNOWN"]
+
+# --- nurture_all: acc_one ngach A (co tu khoa -> tim kiem), acc_two chua
+# config ngach (chi luot FYP); moi acc budget nho de test nhanh
+cfg3 = tmp / "accounts3.json"
+kw3 = tmp / "niche-kw3.json"
+os.environ["PHONE_POSTER_CONFIG"] = str(cfg3)
+os.environ["PHONE_POSTER_NICHE_KW"] = str(kw3)
+pp.save_niches({"acc_one": "A"})
+pp.save_niche_keywords({"A": ["loyalty test"]})
+devA = FakeDevice()
+res = pp.nurture_all(devA, tmp, like_cap=0, min_s=0.05, max_s=0.1)
+assert [r["user"] for r in res] == ["acc_one", "acc_two"], res
+assert all(r["status"] == "done" for r in res), res
+assert devA.current == "acc_two", devA.current
+enters = sum(1 for c in devA.calls if c == ("press", "enter"))
+assert enters == 1, enters  # chi acc co ngach moi tim kiem; acc chua config thi khong
+assert not any(c[0] == "double_click" for c in devA.calls)
+print("nurture_all OK (2 acc: 1 tim kiem theo ngach, 1 luot FYP; doi acc co xac nhan)")
+del os.environ["PHONE_POSTER_CONFIG"]
+del os.environ["PHONE_POSTER_NICHE_KW"]
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

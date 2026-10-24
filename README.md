@@ -187,25 +187,33 @@ Lưu ý: config chỉ gán được cho acc đã đăng nhập trong app. Acc mu
 đăng nhập thì đăng nhập vào app trước, rồi chạy lại mục 8 là thấy nó trong
 danh sách.
 
-## Nuôi acc tự động (xem hết video rồi lướt)
+## Nuôi acc tự động (nuôi là nuôi hết)
 
-Mở `run_poster.bat` → mục **10** (hoặc nút 9 trong GUI): tool mở TikTok,
-về Home, rồi nuôi như người thật — xem mỗi video đủ lâu (phần lớn 15–45s
-là hết video ngắn, thỉnh thoảng xem dài 45–120s), thỉnh thoảng like bằng
-double-tap (tối đa 8 cái/phiên), rồi vuốt lên với vị trí/tốc độ ngẫu
-nhiên. Một phiên mặc định ~20–40 phút, Ctrl+C dừng lúc nào cũng được
-(vẫn in tổng kết). Nếu nhập từ khóa ngách (cách nhau bằng dấu phẩy, vd
-`dashcam,road rage`) thì đầu phiên tool tìm kiếm từng từ khóa và xem ~6
-video/từ để FYP học đúng ngách; mở tìm kiếm không được trên giao diện
+Mở `run_poster.bat` → mục **10** (hoặc nút 9 trong GUI): tool lấy danh
+sách acc đang đăng nhập trong app rồi nuôi hết, mỗi acc ~10 phút (ngẫu
+nhiên 9–11 phút cho đỡ đều) rồi tự đổi acc, cuối phiên in tổng kết từng
+acc. Acc nào đổi không được thì bỏ qua, nuôi tiếp acc khác. Ctrl+C dừng
+cả phiên (vẫn in tổng kết).
+
+Ngách đã config là master, không hỏi lại từ khóa mỗi lần chạy: mục 8
+giờ hỏi 2 pha — gán ngách từng acc, rồi hỏi từ khóa tìm kiếm cho từng
+ngách (lưu vào `niche_keywords.json`; gán nhanh 1 ngách bằng
+`--set-niche-keywords <ngách> "<kw1,kw2>"`). Khi nuôi, acc có ngách thì
+đầu phiên tìm kiếm từ khóa của ngách đó và xem ~6 video/từ để FYP học
+đúng ngách; acc chưa config ngách thì lướt FYP thôi. Ngách chưa có từ
+khóa riêng mà nhãn đủ dài (vd `dashcam`) thì dùng chính nhãn làm từ
+khóa; nhãn quá ngắn (vd `A`, `B`) mà chưa có từ khóa thì lướt FYP thôi
+— thêm từ khóa ở mục 8 là xong. Mở tìm kiếm không được trên giao diện
 của bạn thì nó tự bỏ qua và nuôi bằng FYP, không crash phiên.
+
+Nuôi 1 acc lẻ vẫn được qua dòng lệnh: `--nurture --account <user>` (mặc
+định ~20–40 phút/phiên, chỉnh bằng `--nurture-min`, `--nurture-max`;
+`--nurture-keywords`, `--nurture-likes` 0 = không like).
 
 Cố tình KHÔNG tự động 2 việc: **comment** và **follow**. Comment máy
 viết không ra ý thật và là tín hiệu spam dễ bị bắt nhất; follow cũng
-vậy. 2 việc đó làm tay: 1–2 comment thật/ngày, 2–3 follow/ngày. Mỗi lần
-chạy chỉ nuôi 1 acc; nuôi xong acc này nghỉ ít nhất 30 phút mới đổi acc
-khác; bật VPN trước khi mở TikTok. Tùy chọn dòng lệnh: `--nurture-min`,
-`--nurture-max` (giây/phiên), `--nurture-keywords`, `--nurture-likes`
-(0 = không like), `--account` để bắt buộc đúng acc.
+vậy. 2 việc đó làm tay: 1–2 comment thật/ngày, 2–3 follow/ngày. Bật VPN
+trước khi mở TikTok.
 
 ## Danh sách acc đã biết (để gợi ý đúng hơn)
 

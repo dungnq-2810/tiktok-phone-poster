@@ -11,7 +11,8 @@ của clipgen (mỗi story một folder con chứa video + caption) là chạy l
 
     python phone_poster.py --init            # cài agent lên điện thoại (USB, 1 lần)
     python phone_poster.py --wifi            # chuyển sang ADB qua Wi-Fi để rút cáp
-    python phone_poster.py --nurture --account username --nurture-keywords "dashcam,road rage"  # nuôi acc tự động ~20-40 phút: xem hết video rồi lướt
+    python phone_poster.py --nurture --account username --nurture-keywords "dashcam,road rage"  # nuôi 1 acc ~20-40 phút: xem hết video rồi lướt
+    python phone_poster.py --nurture-all  # nuôi TẤT CẢ acc: mỗi acc ~10 phút rồi đổi, theo ngách đã config (master)
     python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app (+ ngách đã config)
     python phone_poster.py --config-niches   # lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu vào accounts.json
     python phone_poster.py --set-niche username B  # gán nhanh 1 acc vào ngách B
@@ -46,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-16"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-17"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -390,6 +391,58 @@ def record_known(usernames, current):
             entry["current"] = (u == cur)
     save_known(mapping)
     return mapping
+
+
+def _niche_kw_path():
+    """File tu khoa tim kiem theo ngach (master setting cho nuoi). Ghi de
+    qua bien moi truong PHONE_POSTER_NICHE_KW cho test."""
+    override = os.environ.get("PHONE_POSTER_NICHE_KW")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "niche_keywords.json"
+
+
+def load_niche_keywords():
+    """Doc {ngach: [tu khoa, ...]}. File khong co hoac loi thi tra {}."""
+    try:
+        data = json.loads(_niche_kw_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out = {}
+    for k, v in data.items():
+        if isinstance(v, list):
+            kws = [s.strip() for s in v if isinstance(s, str) and s.strip()]
+            if kws:
+                out[k.strip()] = kws
+    return out
+
+
+def save_niche_keywords(mapping):
+    _niche_kw_path().write_text(
+        json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n", encoding="utf-8")
+
+
+def keywords_for_niche(niche):
+    """Tu khoa tim kiem cho 1 ngach (master setting cho nuoi tat ca):
+    1. niche_keywords.json co entry -> dung no.
+    2. Khong co entry: nhan ngach dai >= 3 ky tu thi dung chinh nhan lam
+       tu khoa (vd ngach 'dashcam' -> tim 'dashcam').
+    3. Nhan qua ngan ('A', 'B') hoac chua config ngach -> [] -> luot FYP
+       thoi, khong tim kiem."""
+    if not niche:
+        return []
+    label = niche.strip()
+    if not label:
+        return []
+    kws = load_niche_keywords().get(label, [])
+    if kws:
+        return kws
+    if len(label) >= 3:
+        return [label]
+    return []
 
 
 def _parse_nodes(d):
@@ -835,6 +888,7 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
     jitter(2.0, 3.0)
     watched = 0
     likes_done = 0
+    interrupted = False
     end = time.time() + budget
     try:
         for kw in (keywords or []):
@@ -850,10 +904,65 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
             if watched % 10 == 0:
                 log(f"   ... đã xem {watched} video, like {likes_done}")
     except KeyboardInterrupt:
+        interrupted = True
         log("   (đã dừng nuôi bằng Ctrl+C)")
     log(f"✅ Nuôi xong: xem {watched} video, like {likes_done} "
         f"trong ~{budget / 60:.0f} phút.")
-    return {"watched": watched, "likes": likes_done, "minutes": budget / 60}
+    return {"watched": watched, "likes": likes_done, "minutes": budget / 60,
+            "interrupted": interrupted}
+
+
+def nurture_all(d, root, like_cap=8, min_s=540, max_s=660):
+    """Nuôi TẤT CẢ acc đang đăng nhập trong app, mỗi acc ~10 phút rồi đổi.
+    Ngách đã config (accounts.json) là master: acc có ngách -> tìm kiếm
+    từ khóa của ngách đó (niche_keywords.json, hoặc chính nhãn ngách nếu
+    đủ dài); acc chưa config ngách -> lướt FYP thôi.
+    Acc nào đổi không được thì bỏ qua, nuôi tiếp acc khác (không dừng cả
+    phiên vì 1 acc); cuối phiên in tổng kết từng acc. Trả list tổng kết."""
+    current, accounts = list_logged_in_accounts(d, root)
+    if not accounts:
+        raise JobError("không thấy acc nào đăng nhập trong app TikTok")
+    niches = load_niches()
+    log(f"→ Nuôi tất cả {len(accounts)} acc, mỗi acc ~10 phút rồi đổi acc.")
+    results = []
+    for user in accounts:
+        niche = niches.get(user, "")
+        kws = keywords_for_niche(niche)
+        try:
+            switch_account(d, user)
+        except Exception as e:
+            log(f"❌ Bỏ qua @{user}: không đổi được acc ({e})")
+            results.append({"user": user, "niche": niche, "status": "skip",
+                            "reason": str(e)})
+            continue
+        if niche and kws:
+            log(f"→ Nuôi @{user} (ngách {niche}, từ khóa: {', '.join(kws)})")
+        elif niche:
+            log(f"→ Nuôi @{user} (ngách {niche} chưa có từ khóa — lướt FYP thôi)")
+        else:
+            log(f"→ Nuôi @{user} (chưa config ngách — lướt FYP thôi)")
+        try:
+            s = nurture_session(d, min_s=min_s, max_s=max_s,
+                                keywords=kws, like_cap=like_cap)
+            results.append({"user": user, "niche": niche, "status": "done",
+                            "watched": s["watched"], "likes": s["likes"],
+                            "minutes": s["minutes"]})
+            if s.get("interrupted"):
+                log("Đã dừng toàn bộ phiên nuôi tất cả.")
+                break
+        except JobError as e:
+            log(f"❌ Nuôi @{user} lỗi: {e}")
+            results.append({"user": user, "niche": niche, "status": "error",
+                            "reason": str(e)})
+    log("===== Tổng kết nuôi tất cả =====")
+    for r in results:
+        if r["status"] == "done":
+            log(f"  • @{r['user']} (ngách {r['niche'] or 'chưa config'}): "
+                f"xem {r['watched']} video, like {r['likes']} "
+                f"trong ~{r['minutes']:.0f} phút")
+        else:
+            log(f"  • @{r['user']}: {r['status']} ({r.get('reason', '')})")
+    return results
 
 
 # -------------------------------------------------------------- one post ----
@@ -1193,6 +1302,10 @@ def main():
                     help="gán ngách cho 1 acc (vd: --set-niche sandracruzkay183 B)")
     ap.add_argument("--known-accounts", action="store_true",
                     help="in danh sách acc đã biết (đã lưu từ những lần liệt kê trước, không cần mở điện thoại)")
+    ap.add_argument("--set-niche-keywords", nargs=2, metavar=("NGACH", "TU_KHOA"),
+                    help="gán từ khóa tìm kiếm cho 1 ngách (vd: --set-niche-keywords A \"loyalty test,street fight\")")
+    ap.add_argument("--nurture-all", action="store_true",
+                    help="nuôi TẤT CẢ acc đang đăng nhập: mỗi acc ~10 phút rồi đổi acc, theo ngách đã config")
     ap.add_argument("--config-niches", action="store_true",
                     help="lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu")
     ap.add_argument("--nurture", action="store_true",
@@ -1248,6 +1361,19 @@ def main():
             log(f"  • @{u}{mark}{ntag}{seen}")
         return
 
+    if args.set_niche_keywords:
+        niche, kws = args.set_niche_keywords
+        niche = (niche or "").strip()
+        kw_list = [k.strip() for k in (kws or "").split(",") if k.strip()]
+        if not niche or not kw_list:
+            log("❌ --set-niche-keywords cần tên ngách và ít nhất 1 từ khóa.")
+            sys.exit(1)
+        mapping = load_niche_keywords()
+        mapping[niche] = kw_list
+        save_niche_keywords(mapping)
+        log(f"✅ Đã config từ khóa cho ngách {niche}: {', '.join(kw_list)}")
+        return
+
     if args.config_niches:
         try:
             d = _connect(args.serial)
@@ -1288,6 +1414,26 @@ def main():
             log("✅ Đã lưu config ngách.")
         else:
             log("Không đổi gì.")
+        # Pha 2: tu khoa tim kiem cho tung ngach (master setting cho nuoi
+        # tat ca — nuoi khong hoi lai tu khoa tung lan chay nua).
+        kw_map = load_niche_keywords()
+        kw_changed = False
+        for niche in sorted(set(mapping.values())):
+            cur_kw = kw_map.get(niche, [])
+            try:
+                ans = input(f"  Từ khóa tìm kiếm cho ngách '{niche}' (hiện tại: "
+                            f"{', '.join(cur_kw) or 'chưa có'}; cách nhau bằng dấu "
+                            f"phẩy, Enter = giữ nguyên): ").strip()
+            except EOFError:
+                ans = ""
+            if ans:
+                kws = [k.strip() for k in ans.split(",") if k.strip()]
+                if kws:
+                    kw_map[niche] = kws
+                    kw_changed = True
+        if kw_changed:
+            save_niche_keywords(kw_map)
+            log("✅ Đã lưu từ khóa ngách.")
         return
 
     if args.nurture:
@@ -1308,6 +1454,20 @@ def main():
         try:
             nurture_session(d, min_s=args.nurture_min, max_s=args.nurture_max,
                             keywords=keywords, like_cap=args.nurture_likes)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
+        return
+
+    if args.nurture_all:
+        try:
+            d = _connect(args.serial)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
+        try:
+            nurture_all(d, Path(args.dir).resolve(),
+                        like_cap=args.nurture_likes)
         except JobError as e:
             log(f"❌ {e}")
             sys.exit(1)

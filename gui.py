@@ -54,15 +54,6 @@ class Gui:
                  "lại danh sách (chạy 'Xem các acc' để cập nhật).").pack(
                      side="left", padx=4, pady=4)
 
-        # ---- (b2) Nuôi acc: từ khóa ngách -------------------------------
-        frm_n = tk.LabelFrame(root, text="Nuôi acc: từ khóa ngách")
-        frm_n.pack(fill="x", padx=8, pady=4)
-        self.keywords_var = tk.StringVar()
-        tk.Entry(frm_n, textvariable=self.keywords_var).pack(
-            side="left", fill="x", expand=True, padx=4, pady=4)
-        tk.Label(frm_n, text="Cách nhau bằng dấu phẩy. Để trống = chỉ "
-                 "lướt FYP, không tìm kiếm.").pack(side="left", padx=4, pady=4)
-
         # ---- (c) Tùy chọn (chỉ áp dụng cho 2 nút đăng) ------------------
         frm_o = tk.LabelFrame(root, text="Tùy chọn đăng")
         frm_o.pack(fill="x", padx=8, pady=4)
@@ -108,7 +99,7 @@ class Gui:
             ("6. Đổi acc", self.cmd_switch),
             ("7. Wi-Fi ADB", self.cmd_wifi),
             ("8. Config acc theo ngách", self.cmd_config_niches),
-            ("9. Nuôi acc tự động", self.cmd_nurture),
+            ("9. Nuôi tất cả acc", self.cmd_nurture_all),
         ]
         for i, (label, cmd) in enumerate(buttons):
             btn = tk.Button(frm_b, text=label, command=cmd, width=28)
@@ -314,14 +305,10 @@ class Gui:
     def cmd_config_niches(self):
         self.run(POSTER, ["--config-niches"])
 
-    def cmd_nurture(self):
-        args = ["--nurture"]
-        if self.account():
-            args += ["--account", self.account()]
-        kw = self.keywords_var.get().strip()
-        if kw:
-            args += ["--nurture-keywords", kw]
-        self.run(POSTER, args)
+    def cmd_nurture_all(self):
+        # Nuoi la nuoi het: doc danh sach acc live + ngach master tu tool,
+        # khong dung o acc/tu khoa o day nua (nuoi 1 acc van co qua CLI).
+        self.run(POSTER, ["--nurture-all"])
 
 
 def main():
