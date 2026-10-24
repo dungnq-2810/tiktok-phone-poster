@@ -47,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-21"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-22"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -393,10 +393,12 @@ def _is_system_el(info):
     return False
 
 
-def _match_role(elements, variants):
+def _match_role(elements, variants, exact_only=False):
     """Element khop tot nhat cho 1 role trong list da distill: khop chinh
     xac (text/desc) + clickable truoc, roi moi toi Contains. Bo qua element
-    cua systemui ngay tu dau (nut Home he thong khong phai tab Home)."""
+    cua systemui ngay tu dau (nut Home he thong khong phai tab Home).
+    exact_only=True thi bo qua luot Contains (vd tab 'Posts' khong duoc
+    tinh la nut 'Post')."""
     els = [el for el in elements
            if not (el.get("res") or "").startswith("com.android.systemui")]
     for want_click in (True, False):
@@ -406,6 +408,8 @@ def _match_role(elements, variants):
                     continue
                 if el.get("text") == v or el.get("desc") == v:
                     return el
+    if exact_only:
+        return None
     for want_click in (True, False):
         for v in variants:
             for el in els:
@@ -466,13 +470,16 @@ def scan_ui_screen(d, name):
                 "bounds": _node_bounds(node),
             })
     version = None
-    try:
-        out = d.shell(["dumpsys", "package", TIKTOK_PKG]) or ""
+    for cmd in (f"dumpsys package {TIKTOK_PKG}",
+                ["dumpsys", "package", TIKTOK_PKG]):
+        try:
+            out = d.shell(cmd) or ""
+        except Exception:
+            continue
         m = re.search(r"versionName=(\S+)", out)
         if m:
             version = m.group(1)
-    except Exception:
-        pass
+            break
     outdir = _ui_map_dir()
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / f"{name}.xml").write_text(xml, encoding="utf-8")
@@ -510,20 +517,27 @@ def load_ui_map():
 
 def _mapped_selector(variants):
     """Selector ghi san tu file map: resource-id thang luon neu co (on dinh
-    nhat), khong thi text/desc chinh xac. None = map khong biet role nay."""
-    best = None
-    for screen in sorted(load_ui_map()):
-        el = _match_role(load_ui_map()[screen], variants)
-        if not el:
-            continue
-        if el.get("res"):
-            return {"resourceId": el["res"]}
-        if best is None:
-            if el.get("text"):
-                best = {"text": el["text"]}
-            elif el.get("desc"):
-                best = {"description": el["desc"]}
-    return best
+    nhat), khong thi text/desc chinh xac. None = map khong biet role nay.
+    Hai luot qua TAT CA man: luot 1 chi khop CHINH XAC (tab 'Posts' khong
+    duoc tinh la nut 'Post' du no dung truoc theo thu tu file), luot 2
+    moi toi Contains."""
+    for exact_only in (True, False):
+        best = None
+        for screen in sorted(load_ui_map()):
+            el = _match_role(load_ui_map()[screen], variants,
+                             exact_only=exact_only)
+            if not el:
+                continue
+            if el.get("res"):
+                return {"resourceId": el["res"]}
+            if best is None:
+                if el.get("text"):
+                    best = {"text": el["text"]}
+                elif el.get("desc"):
+                    best = {"description": el["desc"]}
+        if best is not None:
+            return best
+    return None
 
 
 def _try_click_mapped(d, variants, timeout=6.0, region=None):
@@ -713,9 +727,17 @@ def _node_bounds(node):
     return tuple(map(int, m.groups()))
 
 
+def _is_resource_ref_handle(h):
+    """'@2131823550' không phải username — đó là tham chiếu resource-id
+    Android chưa resolve thành chữ (gặp trên màn chuẩn bị đăng: nút Back
+    và ảnh thumbnail mang content-desc dạng này). Nhận nhầm nó thành acc
+    đang dùng là sai im lặng, nên loại hẳn."""
+    return re.fullmatch(r"21[34]\d{7}", h or "") is not None
+
+
 def _handles_on_screen(d):
     """Mọi @username đang hiện trên màn hình: list (handle, y phía trên),
-    sắp xếp từ trên xuống dưới."""
+    sắp xếp từ trên xuống dưới. Bỏ qua @ số kiểu resource-ref."""
     root_el = _parse_nodes(d)
     found = []
     if root_el is None:
@@ -723,7 +745,7 @@ def _handles_on_screen(d):
     for node in root_el.iter("node"):
         for attr in ("text", "content-desc"):
             m = HANDLE_RE.search(node.get(attr) or "")
-            if m:
+            if m and not _is_resource_ref_handle(m.group(1)):
                 b = _node_bounds(node)
                 found.append((m.group(1).lower(), b[1] if b else 0))
                 break
@@ -748,7 +770,7 @@ def _own_profile_handle(d):
     for node in root_el.iter("node"):
         for attr in ("text", "content-desc"):
             m = HANDLE_RE.search(node.get(attr) or "")
-            if m:
+            if m and not _is_resource_ref_handle(m.group(1)):
                 b = _node_bounds(node)
                 y = b[1] if b else 0
                 if y < 0.40 * h and (best is None or y < best[1]):

@@ -698,5 +698,39 @@ assert pp._try_click(devY, ["Home"], timeout=0.5) is False
 devY2 = FakeDevice()
 assert pp._try_click(devY2, ["Home"], timeout=0.5) is True
 print("try_click OK (bo qua node he thong, chi bam nut cua app)")
+
+# --- @ so kieu resource-ref khong duoc tinh la username; map khop chinh xac truoc
+assert pp._is_resource_ref_handle("2131823550") is True
+assert pp._is_resource_ref_handle("2131823387") is True
+assert pp._is_resource_ref_handle("tylerlopeztate") is False
+assert pp._is_resource_ref_handle("acc123") is False
+import xml.etree.ElementTree as _ET
+_xml = ('<hierarchy>'
+        '<node text="" content-desc="@2131823550" bounds="[12,55][100,143]"/>'
+        '<node text="@realacc" bounds="[24,254][215,284]"/>'
+        '</hierarchy>')
+_orig_parse = pp._parse_nodes
+pp._parse_nodes = lambda d: _ET.fromstring(_xml)
+try:
+    assert pp._own_profile_handle(FakeDevice()) == "realacc"
+    assert pp._handles_on_screen(FakeDevice()) == [("realacc", 254)]
+finally:
+    pp._parse_nodes = _orig_parse
+print("resource_ref_handle OK (@ so khong tinh la acc)")
+
+_mapdir3 = tmp / "ui_map3"
+_mapdir3.mkdir(exist_ok=True)
+(_mapdir3 / "aaa_profile.json").write_text(json.dumps({"screen": "aaa", "elements": [
+    {"text": "Posts", "desc": "", "res": "com.zhiliaoapp.musically:id/kg9",
+     "class": "x", "clickable": False, "bounds": [88, 585, 132, 629]},
+]}, ensure_ascii=False), encoding="utf-8")
+(_mapdir3 / "zzz_caption.json").write_text(json.dumps({"screen": "zzz", "elements": [
+    {"text": "Post", "desc": "", "res": "com.zhiliaoapp.musically:id/tjf",
+     "class": "x", "clickable": True, "bounds": [368, 1304, 696, 1400]},
+]}, ensure_ascii=False), encoding="utf-8")
+_os.environ["PHONE_POSTER_UI_MAP"] = str(_mapdir3)
+pp._UI_MAP_CACHE = None
+assert pp._mapped_selector(["Post", "Đăng"]) == {"resourceId": "com.zhiliaoapp.musically:id/tjf"}
+print("mapped_selector OK (khop chinh xac truoc, khong lay tab Posts dung truoc)")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

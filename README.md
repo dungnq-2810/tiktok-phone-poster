@@ -140,7 +140,8 @@ Mở từng màn hình trên điện thoại rồi chạy mục 11 (hoặc
 - `feed` — màn hình chính (thanh dưới + nút Search + nút Tạo)
 - `profile` — trang Hồ sơ của mình
 - `sheet` — bảng chuyển tài khoản đang mở
-- `gallery` — màn hình chọn video sau khi bấm Tạo
+- `camera` — màn quay sau khi bấm Tạo, trước khi bấm Upload (có nút Upload)
+- `gallery` — màn hình chọn video sau khi bấm Upload
 - `editor` — màn hình biên tập sau khi chọn video (nút Tiếp)
 - `caption` — màn hình nhập mô tả + nút Đăng
 
