@@ -364,5 +364,64 @@ assert s2["likes"] == 0, s2
 assert ("press", "enter") in devN2.calls, "phai go tu khoa roi Enter de tim kiem"
 assert not any(c[0] == "double_click" for c in devN2.calls), "like_cap=0 thi khong like"
 print(f"nurture_session OK (tim kiem ngach: xem {s2['watched']} video, khong like)")
+# --- run_wifi: connect rot 2 lan dau (may yeu khoi dong lai adbd cham) -> thu
+# lai, lan 3 moi thay may; may unauthorized -> bao rieng, dung ngay
+assert pp._adb_devices("List of devices attached\nUSB123\tdevice\n"
+                       "192.168.1.50:5555\tunauthorized\nX\t offline\n") == \
+    {"USB123": "device", "192.168.1.50:5555": "unauthorized", "X": "offline"}
+print("_adb_devices OK (parse dung trang thai device/unauthorized/offline)")
+import shutil as _shutil_mod, subprocess as _sp_mod
+_calls = {"connect": 0}
+class _R:
+    def __init__(self, out): self.stdout = out
+def _fake_adb(argv, capture_output=False, text=False, timeout=None, check=False):
+    if argv[1] == "devices":
+        if _calls["connect"] >= 3:
+            return _R("List of devices attached\n192.168.1.50:5555\tdevice\n")
+        return _R("List of devices attached\nUSB123\tdevice\n")
+    if argv[1] == "-s":
+        if "tcpip" in argv:
+            return _R("")
+        return _R("    inet 192.168.1.50/24 brd 192.168.1.255 scope global wlan0\n")
+    if argv[1] == "connect":
+        _calls["connect"] += 1
+        if _calls["connect"] >= 3:
+            return _R("connected to 192.168.1.50:5555")
+        return _R("failed to connect to 192.168.1.50:5555")
+    return _R("")
+_real_which = _shutil_mod.which
+_shutil_mod.which = lambda name: "/fake/adb" if name == "adb" else _real_which(name)
+_real_sp_run = _sp_mod.run
+_sp_mod.run = _fake_adb
+_fake_u2w = types.ModuleType("uiautomator2")
+class _WifiDev:
+    @property
+    def info(self): return {"productName": "olive"}
+_fake_u2w.connect = lambda serial="": _WifiDev()
+sys.modules["uiautomator2"] = _fake_u2w
+pp.run_wifi()
+assert _calls["connect"] == 3, _calls
+print("run_wifi OK (connect rot 2 lan dau -> thu lai, lan 3 moi thay may device)")
+def _fake_adb_unauth(argv, capture_output=False, text=False, timeout=None, check=False):
+    if argv[1] == "devices":
+        if _calls["connect"] >= 1:
+            return _R("List of devices attached\n192.168.1.50:5555\tunauthorized\n")
+        return _R("List of devices attached\nUSB123\tdevice\n")
+    if argv[1] == "-s":
+        if "tcpip" in argv:
+            return _R("")
+        return _R("    inet 192.168.1.50/24 brd 192.168.1.255 scope global wlan0\n")
+    if argv[1] == "connect":
+        _calls["connect"] += 1
+        return _R("connected to 192.168.1.50:5555")
+    return _R("")
+_calls["connect"] = 0
+_sp_mod.run = _fake_adb_unauth
+pp.run_wifi()
+assert _calls["connect"] == 1, _calls
+print("run_wifi OK (may unauthorized -> bao rieng, dung ngay lan 1)")
+_sp_mod.run = _real_sp_run
+_shutil_mod.which = _real_which
+del sys.modules["uiautomator2"]
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

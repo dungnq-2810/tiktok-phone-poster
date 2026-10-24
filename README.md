@@ -217,7 +217,13 @@ Wi-Fi nên tool tự chọn nó; muốn chắc thì chạy kèm `--serial <IP>:5
 Cắm cáp lại là về USB, không cần làm gì thêm. Lưu ý: PC và điện thoại phải
 cùng mạng Wi-Fi nhà (đừng bật kiểu này ở mạng công cộng); khởi động lại
 điện thoại là mất chế độ tcpip, phải cắm cáp chạy lại mục 7; IP có thể đổi
-khi router cấp lại nên đặt IP tĩnh cho điện thoại thì khỏi lo.
+khi router cấp lại nên đặt IP tĩnh cho điện thoại thì khỏi lo. Mục 7 tự
+thử nối lại nhiều lần (máy yếu khởi động lại adbd chậm, thử 1 lần là
+trượt oan); nếu nó báo máy 'unauthorized' thì kiểm tra màn hình điện
+thoại và bấm Cho phép hộp thoại gỡ lỗi rồi chạy lại. Rút cáp xong mà mục
+khác báo không nói chuyện được thì thường là link Wi-Fi rớt (màn hình tắt
+lâu, MIUI tắt nền) — để màn hình sáng trong lúc chạy, hoặc cắm cáp chạy
+lại mục 7.
 
 ## Điện thoại tắt màn hình / khóa màn hình
 

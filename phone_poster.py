@@ -46,7 +46,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-14"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-15"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -938,8 +938,27 @@ def _connect(serial):
     menu 1, rồi vào Cài đặt > Pin cho app ATX chọn 'Không giới hạn' và
     khóa nó trong đa nhiệm cho khỏi bị tắt."""
     import uiautomator2 as u2
+    use_serial = serial or ""
+    if not use_serial:
+        # Không chỉ serial: chọn máy đầu tiên ở trạng thái device trong
+        # `adb devices` để khỏi vớ phải máy offline/unauthorized đứng
+        # trước trong danh sách (bệnh gặp sau khi rút cáp). Không có adb
+        # hoặc không có máy nào thì giữ nguyên cách nối cũ.
+        try:
+            import shutil
+            import subprocess
+            adb = shutil.which("adb")
+            if adb:
+                out = subprocess.run([adb, "devices"], capture_output=True,
+                                     text=True, timeout=10).stdout
+                for line in out.splitlines():
+                    if "\tdevice" in line:
+                        use_serial = line.split("\t")[0].strip()
+                        break
+        except Exception:
+            pass
     try:
-        d = u2.connect(serial or "")
+        d = u2.connect(use_serial)
         name = d.info.get("productName")
     except Exception:
         raise JobError("không nói chuyện được với điện thoại (cáp lỏng, chưa "
@@ -950,12 +969,29 @@ def _connect(serial):
     return d
 
 
+def _adb_devices(text):
+    """Parse `adb devices` -> {serial: state}. Chỉ để đọc trạng thái máy,
+    không dùng để quyết định gì khác."""
+    out = {}
+    for line in (text or "").splitlines():
+        if "\t" in line:
+            serial, state = line.split("\t", 1)
+            serial, state = serial.strip(), state.strip()
+            if serial:
+                out[serial] = state
+    return out
+
+
 def run_wifi():
     """Chuyển điện thoại đang cắm USB sang ADB qua Wi-Fi để rút cáp được.
 
     Thứ tự bắt buộc: lấy IP Wi-Fi TRƯỚC (khi còn nối USB), rồi mới tcpip
     (lệnh này khởi động lại adbd nên USB rớt ngay sau đó), rồi connect IP.
-    Cắm cáp lại là về USB, không cần làm gì thêm."""
+    Cắm cáp lại là về USB, không cần làm gì thêm.
+    Khác bản cũ: thử connect lại nhiều lần (máy yếu khởi động lại adbd
+    chậm, thử 1 lần sau 2s là trượt oan) và đọc đúng trạng thái máy —
+    'unauthorized' (chưa bấm Cho phép trên điện thoại) phải báo riêng,
+    không được tính là nối được."""
     import shutil
     import subprocess
     adb = shutil.which("adb")
@@ -965,8 +1001,7 @@ def run_wifi():
         return
     out = subprocess.run([adb, "devices"], capture_output=True,
                          text=True).stdout
-    usb = [l.split("\t")[0] for l in out.splitlines()
-           if l.rstrip().endswith("\tdevice")]
+    usb = [s for s, st in _adb_devices(out).items() if st == "device"]
     if not usb:
         log("❌ Không thấy điện thoại nào qua USB — cắm cáp + bật USB debugging "
             "rồi chạy lại.")
@@ -991,27 +1026,40 @@ def run_wifi():
         return
     log(f"IP Wi-Fi của điện thoại: {ip}")
     subprocess.run([adb, "-s", serial, "tcpip", "5555"], check=False)
-    time.sleep(2)
-    r = subprocess.run([adb, "connect", f"{ip}:5555"],
-                       capture_output=True, text=True)
-    log((r.stdout or "").strip())
-    time.sleep(1)
-    out = subprocess.run([adb, "devices"], capture_output=True,
-                         text=True).stdout
-    if f"{ip}:5555" in out:
-        log(f"✅ Xong: rút cáp được. Từ giờ chạy các mục khác bình thường "
-            f"(chỉ còn máy Wi-Fi nên tool tự chọn nó); hoặc chạy kèm "
-            f"--serial {ip}:5555 để chắc chắn.")
-        try:
-            import uiautomator2 as u2
-            d = u2.connect(f"{ip}:5555")
-            log(f"   Kiểm tra qua uiautomator2 OK: {d.info.get('productName')}")
-        except Exception:
-            log("   (adb nối được nhưng chưa nói chuyện được qua uiautomator2 "
-                "— thử chạy lại menu 2 để kiểm tra)")
-    else:
-        log("❌ Chưa thấy máy qua Wi-Fi — PC và điện thoại có cùng mạng Wi-Fi "
-            "không? Thử chạy lại mục này.")
+    target = f"{ip}:5555"
+    state = None
+    for attempt in range(1, 11):
+        r = subprocess.run([adb, "connect", target],
+                           capture_output=True, text=True)
+        msg = (r.stdout or "").strip()
+        if msg:
+            log(f"   adb connect (lần {attempt}): {msg}")
+        time.sleep(3)
+        out = subprocess.run([adb, "devices"], capture_output=True,
+                             text=True).stdout
+        state = _adb_devices(out).get(target)
+        if state == "device":
+            break
+        if state == "unauthorized":
+            log("❌ Máy hiện 'unauthorized' — kiểm tra màn hình điện thoại, "
+                "bấm Cho phép (Allow) hộp thoại gỡ lỗi rồi chạy lại mục này.")
+            return
+    if state != "device":
+        log("❌ Sau nhiều lần thử vẫn chưa thấy máy qua Wi-Fi — kiểm tra: "
+            "PC và điện thoại có cùng mạng Wi-Fi không? Điện thoại đã nối "
+            "Wi-Fi chưa? Khởi động lại điện thoại là mất chế độ tcpip, phải "
+            "cắm cáp chạy lại mục này.")
+        return
+    log(f"✅ Xong: rút cáp được. Từ giờ chạy các mục khác bình thường "
+        f"(chỉ còn máy Wi-Fi nên tool tự chọn nó); hoặc chạy kèm "
+        f"--serial {ip}:5555 để chắc chắn.")
+    try:
+        import uiautomator2 as u2
+        d = u2.connect(target)
+        log(f"   Kiểm tra qua uiautomator2 OK: {d.info.get('productName')}")
+    except Exception:
+        log("   (adb nối được nhưng chưa nói chuyện được qua uiautomator2 "
+            "— thử chạy lại menu 2 để kiểm tra)")
 
 
 def run_init(serial):
