@@ -151,6 +151,21 @@ mạng, file sửa tay xung đột...) thì nó báo một dòng rồi vẫn ch�
 có, không dừng lại; file sửa tay của bạn không bị ghi đè (pull --ff-only
 không merge khi có xung đột).
 
+## Giao diện GUI (không cần gõ lệnh)
+
+Mở `run_poster.bat` → mục **9**, hoặc bấm đúp trực tiếp `gui.bat` (chỉ
+dùng thư viện chuẩn tkinter nên không cần cài thêm gì; nếu Python của bạn
+thiếu tkinter thì `gui.bat` báo rõ và hướng dẫn cài lại Python từ
+python.org). Giao diện có đủ 8 nút tương ứng 8 mục menu (cài agent, test
+lướt feed, đăng thử, đăng thật, xem acc, đổi acc, Wi-Fi ADB, config
+ngách), ô chọn thư mục hàng đợi, ô nhập acc, tùy chọn đăng (bỏ warmup,
+giữ video, tối đa số video, khoảng nghỉ giữa 2 lần đăng), khung log chạy
+trực tiếp và ô "Trả lời" để gõ ngách khi chạy config (vì config hỏi tương
+tác từng acc). Nút "Đăng thật" luôn hỏi xác nhận trước khi chạy. Lưu ý:
+không có tick chọn dry-run riêng — 2 nút "Đăng thử"/"Đăng thật" là bộ
+chọn duy nhất, tránh trường hợp tick dry-run rồi bấm đăng thật mà không
+được hỏi lại.
+
 ## Config acc theo ngách (lấy danh sách trước, rồi gán)
 
 Mở `run_poster.bat` → mục **8**: tool lấy danh sách acc đang đăng nhập
