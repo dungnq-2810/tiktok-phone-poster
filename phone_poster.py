@@ -400,9 +400,13 @@ def _open_switcher(d):
                         return True
             except Exception:
                 continue
-    for y in (0.055, 0.08):  # chạm thẳng giữa thanh trên cùng
+    # chạm thẳng vào thanh trên cùng: giữa (chỗ tên) và lệch phải (chỗ mũi
+    # tên xổ xuống — trên bản TikTok của máy test, tên 'Street ver...' nằm
+    # giữa còn mũi tên nằm ở ~68% chiều rộng, và có bản chỉ nhận chạm vào
+    # mũi tên chứ không nhận chạm vào chữ tên
+    for xf, yf in ((0.5, 0.055), (0.5, 0.08), (0.68, 0.06)):
         try:
-            d.click(w // 2, int(h * y))
+            d.click(int(w * xf), int(h * yf))
         except Exception:
             pass
         jitter(1.0, 2.0)

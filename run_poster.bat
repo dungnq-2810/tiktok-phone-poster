@@ -1,6 +1,17 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
+REM Tu cap nhat code moi nhat tu GitHub (neu thu muc la git repo va co git).
+REM Neu pull that bai (khong co mang, file sua tay xung dot...) thi van chay
+REM ban hien co, khong dung lai.
+if exist ".git" (
+  where git >nul 2>nul
+  if not errorlevel 1 (
+    echo [Update] Dang pull code moi nhat tu GitHub...
+    git pull --ff-only
+    if errorlevel 1 echo [Update] git pull that bai - van chay ban hien co.
+  )
+)
 title TikTok Phone Poster
 
 set "PY=.venv\Scripts\python.exe"

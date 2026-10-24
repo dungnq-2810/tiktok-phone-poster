@@ -132,6 +132,14 @@ Sau khi đăng xong, video + caption được chuyển vào `_done/`; lỗi thì
 hình + cấu trúc giao diện tại bước lỗi — gửi thư mục đó cho Muse là chẩn
 đoán được TikTok đã đổi giao diện ở đâu.
 
+## Tự cập nhật code
+
+Mỗi lần mở `run_poster.bat`, nó tự `git pull --ff-only` nếu thư mục là git
+repo và máy có git — khỏi pull tay mỗi lần có bản sửa. Pull lỗi (không có
+mạng, file sửa tay xung đột...) thì nó báo một dòng rồi vẫn chạy bản hiện
+có, không dừng lại; file sửa tay của bạn không bị ghi đè (pull --ff-only
+không merge khi có xung đột).
+
 ## Điện thoại tắt màn hình / khóa màn hình
 
 Trước mỗi lần mở TikTok, tool tự đánh thức màn hình + vuốt mở khóa (cú vuốt
