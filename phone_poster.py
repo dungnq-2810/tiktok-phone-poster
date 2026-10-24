@@ -47,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-18"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-19"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -535,6 +535,32 @@ def _handles_on_screen(d):
     return found
 
 
+def _own_profile_handle(d):
+    """@username ở vùng HEADER trang Hồ sơ (nửa trên màn hình).
+
+    Bản cũ lấy @ cao nhất trên màn hình bất kể đang ở trang nào: nếu cú
+    bấm tab Hồ sơ trượt (thanh dưới bị che, popup chắn) mà màn hình đang
+    là trang video thì @ cao nhất đó là @ của TÁC GIẢ video — tool nhận
+    nhầm thành acc đang dùng, không một lỗi nào báo ra. Chỉ lấy @ nằm
+    cao (header trang Hồ sơ, <40% chiều cao màn hình) thì trường hợp đó
+    trả None để caller chờ/thử lại thay vì nhận nhầm."""
+    root_el = _parse_nodes(d)
+    if root_el is None:
+        return None
+    w, h = d.window_size()
+    best = None
+    for node in root_el.iter("node"):
+        for attr in ("text", "content-desc"):
+            m = HANDLE_RE.search(node.get(attr) or "")
+            if m:
+                b = _node_bounds(node)
+                y = b[1] if b else 0
+                if y < 0.40 * h and (best is None or y < best[1]):
+                    best = (m.group(1).lower(), y)
+                break
+    return best[0] if best else None
+
+
 def _goto_profile(d):
     """Mở tab Hồ sơ (Profile) ở thanh điều hướng dưới."""
     if _try_click(d, TXT_PROFILE, timeout=4.0, region="bottom"):
@@ -558,9 +584,9 @@ def current_account(d):
     # ensure_account gọi thẳng vào đây khi app còn chưa mở, nên đọc trượt)
     _goto_profile(d)
     for attempt in range(12):
-        handles = _handles_on_screen(d)
-        if handles:
-            return handles[0][0]
+        handle = _own_profile_handle(d)  # chỉ @ vùng header, không lấy @
+        if handle:                       # tác giả video khi bấm tab trượt
+            return handle
         if attempt == 4:
             try:  # kéo xuống làm mới trang (header tải dở)
                 w, h = d.window_size()
@@ -708,7 +734,9 @@ def _open_switcher(d):
 
 
 BARE_USER_RE = re.compile(r"^[A-Za-z0-9._]{2,30}$")
-SHEET_NON_USER = {"add account", "switch account", "switch accounts"}
+SHEET_NON_USER = {"add account", "switch account", "switch accounts",
+                  "done", "cancel", "back", "close",
+                  "xong", "hủy", "đóng", "quay lại"}
 
 
 def _sheet_usernames(d):
@@ -818,9 +846,55 @@ def list_logged_in_accounts(d, root=None):
     return current, handles or [current]
 
 
+def _tap_sheet_row(d, target):
+    """Bấm dòng acc @target trong bảng chuyển tài khoản.
+
+    Dòng acc thật là nút clickable mang content-desc username TRẦN, bên
+    trong là TextView cùng chữ — nên bấm vào tâm nút cha clickable đó là
+    chắc ăn nhất (bấm TextView không-clickable là bài học cũ từ
+    _open_switcher). Selector cũng khớp CHÍNH XÁC trước: textContains
+    'acc_one' bấm nhầm dòng 'acc_one2' khi 2 acc có username là tiền tố
+    của nhau — bản cũ thử Contains ngay sau 2 kiểu text nên dính đúng
+    bệnh này."""
+    root_el = _parse_nodes(d)
+    if root_el is not None:
+        for node in root_el.iter("node"):
+            t = ((node.get("text") or "").strip()
+                 or (node.get("content-desc") or "").strip())
+            if t != target and t != f"@{target}":
+                continue
+            b = _node_bounds(node)
+            if not b:
+                continue
+            center = _switcher_button_center(d, b)
+            if center is not None:
+                try:
+                    jx, jy = random.randint(-8, 8), random.randint(-8, 8)
+                    d.click(center[0] + jx, center[1] + jy)
+                    return True
+                except Exception:
+                    pass
+    for kwargs in ({"description": target}, {"text": target},
+                   {"text": f"@{target}"},
+                   {"descriptionContains": target}, {"textContains": target}):
+        try:
+            el = d(**kwargs)
+            if el.exists(timeout=0.5) and _tap_human(d, el):
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def switch_account(d, target):
     """Đổi sang acc @target (phải đã đăng nhập sẵn trong app) rồi đọc lại
-    trang Hồ sơ để XÁC NHẬN acc hiện tại đúng là @target mới trả về."""
+    trang Hồ sơ để XÁC NHẬN acc hiện tại đúng là @target mới trả về.
+
+    Bản cũ chờ cố định 3-5s rồi đọc MỘT lần: máy yếu + VPN chậm thì TikTok
+    đổi acc chưa xong, lần đọc đó thấy acc CŨ là báo lỗi oan — đúng kiểu
+    'lúc được lúc không'. Giờ chờ tới khi handle đổi thật (tối đa ~20s,
+    mỗi 2s đọc lại một lần); bảng còn mở nghĩa là cú bấm chưa ăn thì bấm
+    lại dòng 1 lần trong lúc chờ."""
     target = _norm_user(target)
     if not target:
         raise JobError("chưa cho biết acc cần đổi sang")
@@ -832,28 +906,31 @@ def switch_account(d, target):
     log(f"→ Đổi acc: @{cur} → @{target}")
     if not _open_switcher(d):
         raise JobError("không mở được bảng chuyển tài khoản của TikTok")
-    tapped = False
-    for kwargs in ({"text": f"@{target}"}, {"text": target},
-                   {"textContains": target}, {"descriptionContains": target}):
-        try:
-            el = d(**kwargs)
-            if el.exists(timeout=0.5):
-                tapped = _tap_human(d, el)
-                if tapped:
-                    break
-        except Exception:
-            continue
-    if not tapped:
+    if not _tap_sheet_row(d, target):
         raise JobError(f"không thấy acc @{target} trong danh sách đã đăng nhập")
-    jitter(3.0, 5.0)
-    if _exists(d, TXT_VERIFY_BLOCK):
-        raise JobError("TikTok yêu cầu XÁC MINH khi đổi acc — mở điện thoại xử lý "
-                       "tay (nhập mã / bấm xác nhận) rồi chạy lại")
-    cur2 = current_account(d)
-    if cur2 != target:
-        raise JobError(f"đổi acc chưa thành công: đang ở @{cur2}, cần @{target}")
-    log(f"✅ Đã đổi sang acc @{target} (đã xác nhận ở trang Hồ sơ).")
-    return cur2
+    jitter(1.0, 2.0)
+    deadline = time.time() + 20.0
+    cur2 = None
+    while time.time() < deadline:
+        if _exists(d, TXT_VERIFY_BLOCK):
+            raise JobError("TikTok yêu cầu XÁC MINH khi đổi acc — mở điện thoại "
+                           "xử lý tay (nhập mã / bấm xác nhận) rồi chạy lại")
+        try:
+            cur2 = current_account(d)
+        except JobError as e:
+            if "CHƯA đăng nhập" in str(e):
+                raise
+            cur2 = None  # header đang tải dở: chờ tiếp, không kết luận vội
+        if cur2 == target:
+            log(f"✅ Đã đổi sang acc @{target} (đã xác nhận ở trang Hồ sơ).")
+            return cur2
+        if cur2 is not None and cur2 != target:
+            log(f"   … vẫn đang ở @{cur2}, chờ TikTok đổi xong...")
+        if _switcher_open(d):  # bảng còn mở = cú bấm chưa ăn: bấm lại 1 lần
+            _tap_sheet_row(d, target)
+        time.sleep(2.0)
+    raise JobError(f"đổi acc chưa thành công sau ~20s: đang ở "
+                   f"@{cur2 or '?'}, cần @{target}")
 
 
 def ensure_account(d, target):

@@ -112,6 +112,13 @@ python phone_poster.py --list-accounts     # thấy đủ 2 acc chưa?
 python phone_poster.py --switch-to acc_court   # đổi thử + xác nhận
 ```
 
+Đọc acc chỉ lấy @ ở vùng header trang Hồ sơ (không nhận nhầm @ tác giả
+video khi bấm tab Hồ sơ trượt), bấm dòng acc bằng tâm nút cha clickable
+(khớp chính xác, không bấm nhầm acc có username là tiền tố của nhau), và
+đổi acc xong thì chờ tới khi handle đổi thật (tối đa ~20s) thay vì đọc
+một lần sau 3-5s rồi báo lỗi oan.
+```
+
 Cách B — mỗi acc một **không gian** trên máy (Không gian thứ hai của Xiaomi):
 tách bạch hơn nhưng tool không tự chuyển không gian được — mở đúng không
 gian của acc đó rồi chạy lệnh tương ứng (không cần `--account`, giữ

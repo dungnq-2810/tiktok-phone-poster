@@ -1,5 +1,6 @@
 """Test logic phone_poster bằng thiết bị giả — chạy: python test_fake.py"""
-import sys, time, pathlib, tempfile
+import sys, time, pathlib, tempfile, re
+import xml.etree.ElementTree as ET
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 _real_sleep = time.sleep
 time.sleep = lambda s: None  # test chạy tức thì
@@ -40,6 +41,7 @@ class FakeDevice:
         self.profile_dumps = 0
         self.video_idx = 0        # video FYP hiện tại: vuốt là đổi (để test vuốt có kiểm chứng)
         self.stuck_video = False  # True = vuốt không đổi video (giả lập kẹt 1 video)
+        self.feed_author = None   # @ tác giả video đang xem ở FYP (nửa dưới màn hình)
         self._auto_i = 0          # đếm riêng cho hộp tự động (không tính hộp định sẵn)
         self._boxes = {           # nút điều hướng ở đúng vùng như TikTok thật
             "Home": {"left": 100, "top": 2200, "right": 260, "bottom": 2350},
@@ -87,7 +89,25 @@ class FakeDevice:
                 continue
             if b["left"] <= x <= b["right"] and b["top"] <= y <= b["bottom"]:
                 self.el_click(key)
-                break
+                return
+        # không trúng phần tử nào đã tìm trước đó: thử nút thật trong cây UI
+        # (vd bấm tâm nút cha clickable của dòng acc trong bảng chuyển acc)
+        try:
+            root = ET.fromstring(self.dump_hierarchy())
+            for node in root.iter("node"):
+                if node.get("clickable") != "true":
+                    continue
+                m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                             node.get("bounds") or "")
+                if not m:
+                    continue
+                x1, y1, x2, y2 = map(int, m.groups())
+                desc = (node.get("content-desc") or "").strip()
+                if desc and x1 <= x <= x2 and y1 <= y <= y2:
+                    self.el_click(desc)
+                    return
+        except Exception:
+            pass
     def swipe(self, sx, sy, ex, ey, dur=0.5, duration=None):
         self.calls.append(("swipe", sx, sy, ex, ey,
                            dur if duration is None else duration))
@@ -134,8 +154,11 @@ class FakeDevice:
                     f'<node text="{name}" bounds="[340,120][740,200]"/>'
                     f'{handle_row}'
                     '</hierarchy>')
+        feed = (f'<node text="@{self.feed_author}" bounds="[800,1900][1000,1950]"/>'
+                if self.feed_author else "")
         return ('<hierarchy><node clickable="true" bounds="[0,300][360,660]" class="android.widget.FrameLayout"/>'
-                '<node clickable="true" bounds="[360,300][720,660]" class="android.widget.FrameLayout"/></hierarchy>')
+                '<node clickable="true" bounds="[360,300][720,660]" class="android.widget.FrameLayout"/>'
+                f'{feed}</hierarchy>')
     def __call__(self, **kw):
         key = kw.get("text") or kw.get("description") or kw.get("textContains") \
             or kw.get("descriptionContains") or kw.get("className") or "?"
@@ -552,6 +575,21 @@ devT2 = FakeDevice()
 devT2._boxes["Home"] = {"left": 100, "top": 1000, "right": 300, "bottom": 1200}
 assert pp._try_click(devT2, ["Home"], timeout=0.5, region="bottom") is False
 print("tap guards OK (phan tu to = khong bam; Home giua man hinh khong tinh la tab duoi)")
+
+# --- lay profile: @ tac gia video o nua duoi man hinh khong duoc tinh la acc dang dung
+devF = FakeDevice()
+devF.feed_author = "someauthor"
+assert pp._own_profile_handle(devF) is None
+assert pp.current_account(devF) == "acc_one"
+print("profile_handle OK (@ tac gia video khong nhan nham thanh acc dang dung)")
+
+# --- doi acc: bam tam nut cha clickable cua dong acc (khong bam TextView)
+devS = FakeDevice()
+assert pp.current_account(devS) == "acc_one"
+assert pp._open_switcher(devS) is True
+assert pp._tap_sheet_row(devS, "acc_two") is True
+assert devS.current == "acc_two" and not devS.sheet_open
+print("tap_sheet_row OK (bam tam nut cha clickable cua dong acc)")
 
 # --- like chi sau khi qua video moi + log realtime tung video
 import io, contextlib
