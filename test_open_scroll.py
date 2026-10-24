@@ -48,8 +48,9 @@ def run_scroll(d, scrolls=5, watch_min=4.0, watch_max=10.0, shot_path=None):
     log(f"Bắt đầu lướt {scrolls} video (màn hình {w}x{h})...")
     for i in range(scrolls):
         x = int(w * random.uniform(0.46, 0.54))
-        y1 = int(h * random.uniform(0.72, 0.78))
-        y2 = int(h * random.uniform(0.26, 0.34))
+        # Vuot DAI + NHANH nhu _swipe_next: vuot ngan/cham bi TikTok keo tra lai
+        y1 = int(h * random.uniform(0.80, 0.88))
+        y2 = int(h * random.uniform(0.12, 0.20))
         d.swipe(x, y1, x, y2, 0.25)
         watch = random.uniform(watch_min, watch_max)
         log(f"  · video {i + 1}/{scrolls} — xem {watch:.0f}s rồi lướt tiếp")

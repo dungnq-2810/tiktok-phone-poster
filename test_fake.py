@@ -78,7 +78,8 @@ class FakeDevice:
                 self.el_click(key)
                 break
     def swipe(self, sx, sy, ex, ey, dur=0.5, duration=None):
-        self.calls.append(("swipe", sx, sy, ex, ey))
+        self.calls.append(("swipe", sx, sy, ex, ey,
+                           dur if duration is None else duration))
         self._swipe_unlock(sy, ey)
     def screenshot(self, path): pathlib.Path(path).write_bytes(b"png")
     def send_keys(self, t, clear=False): self.captions.append(t)
@@ -423,5 +424,34 @@ print("run_wifi OK (may unauthorized -> bao rieng, dung ngay lan 1)")
 _sp_mod.run = _real_sp_run
 _shutil_mod.which = _real_which
 del sys.modules["uiautomator2"]
+
+# --- vuot manh: phai dai (0.80-0.88h -> 0.12-0.20h) va nhanh (0.15-0.35s)
+devS = FakeDevice()
+pp._swipe_next(devS)
+_, sx, sy, ex, ey, dur = [c for c in devS.calls if c[0] == "swipe"][-1]
+assert sy >= 0.80 * 2400 and ey <= 0.20 * 2400, (sy, ey)
+assert 0.15 <= dur <= 0.35, dur
+print(f"_swipe_next OK (vuot {sy}->{ey} trong {dur:.2f}s, du dai + du nhanh)")
+
+# --- danh sach acc da biet: ghi nhan + goi y
+known_f = tmp / "known-test.json"
+os.environ["PHONE_POSTER_KNOWN"] = str(known_f)
+assert pp.load_known() == {}
+pp.record_known(["@Acc_One", "acc_two"], "acc_one")
+got = pp.load_known()
+assert set(got) == {"acc_one", "acc_two"}, got
+assert got["acc_one"]["current"] is True and got["acc_two"]["current"] is False, got
+assert got["acc_one"]["last_seen"], got
+pp.record_known(["acc_two"], "acc_two")  # chi thay acc_two: acc_one giu last_seen, mat current
+got = pp.load_known()
+assert got["acc_one"]["current"] is False and got["acc_one"]["last_seen"], got
+assert got["acc_two"]["current"] is True, got
+print("record_known OK (chuan hoa, 1 acc current, giu last_seen acc cu)")
+_old_argv = sys.argv
+sys.argv = ["phone_poster.py", "--known-accounts"]
+pp.main()  # khong can dien thoai, chi in danh sach da luu
+sys.argv = _old_argv
+print("--known-accounts OK (in duoc ma khong can mo dien thoai)")
+del os.environ["PHONE_POSTER_KNOWN"]
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

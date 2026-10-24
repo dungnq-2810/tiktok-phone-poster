@@ -12,7 +12,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POSTER = os.path.join(SCRIPT_DIR, "phone_poster.py")
@@ -43,10 +43,15 @@ class Gui:
         frm_a = tk.LabelFrame(root, text="Acc đăng")
         frm_a.pack(fill="x", padx=8, pady=4)
         self.account_var = tk.StringVar()
-        tk.Entry(frm_a, textvariable=self.account_var).pack(
-            side="left", fill="x", expand=True, padx=4, pady=4)
+        self.account_box = ttk.Combobox(frm_a, textvariable=self.account_var)
+        self.account_box.pack(side="left", fill="x", expand=True,
+                              padx=4, pady=4)
+        self.account_box["values"] = self.known_usernames()
+        tk.Button(frm_a, text="↻", command=self.refresh_known).pack(
+            side="left", padx=4, pady=4)
         tk.Label(frm_a, text="Để trống = dùng acc đang mở trong app. "
-                 "Nhập @username để đăng / đổi sang acc đó.").pack(
+                 "Chọn trong danh sách đã lưu hoặc gõ @username. Nút ↻ tải "
+                 "lại danh sách (chạy 'Xem các acc' để cập nhật).").pack(
                      side="left", padx=4, pady=4)
 
         # ---- (b2) Nuôi acc: từ khóa ngách -------------------------------
@@ -152,6 +157,26 @@ class Gui:
         self.log.configure(state="normal")
         self.log.delete("1.0", "end")
         self.log.configure(state="disabled")
+
+    def known_usernames(self):
+        """Đọc known_accounts.json cạnh script: acc đang mở trước, còn
+        lại A-Z. File không có/hỏng thì trả [] (vẫn gõ tay được)."""
+        try:
+            import json
+            with open(os.path.join(SCRIPT_DIR, "known_accounts.json"),
+                      encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return []
+        if not isinstance(data, dict):
+            return []
+        cur = [u for u, e in data.items()
+               if isinstance(e, dict) and e.get("current")]
+        rest = sorted(u for u in data if u not in cur)
+        return ["@" + u for u in cur + rest]
+
+    def refresh_known(self):
+        self.account_box["values"] = self.known_usernames()
 
     def account(self):
         return self.account_var.get().strip().lstrip("@")

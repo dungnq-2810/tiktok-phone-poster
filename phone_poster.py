@@ -46,7 +46,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-15"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-16"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -336,6 +336,60 @@ def tag_for_account(account, tag):
     if account:
         return load_niches().get(_norm_user(account), "")
     return ""
+
+
+def _known_path():
+    """File danh sach acc da biet (de goi y lan sau). Ghi de qua bien
+    moi truong PHONE_POSTER_KNOWN cho test, giong accounts.json."""
+    override = os.environ.get("PHONE_POSTER_KNOWN")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "known_accounts.json"
+
+
+def load_known():
+    """Doc {username chuan hoa: {'last_seen': str, 'current': bool}}.
+    File khong co hoac loi thi tra {}."""
+    try:
+        data = json.loads(_known_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out = {}
+    for k, v in data.items():
+        if isinstance(v, dict):
+            out[_norm_user(k)] = {"last_seen": v.get("last_seen", ""),
+                                  "current": bool(v.get("current", False))}
+    return out
+
+
+def save_known(mapping):
+    _known_path().write_text(
+        json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n", encoding="utf-8")
+
+
+def record_known(usernames, current):
+    """Ghi nhan danh sach acc vua thay: cap nhat last_seen cho acc thay,
+    chi 1 acc current=True (acc dang mo), giu nguyen acc cu da biet.
+    Goi moi lan liet ke thanh cong (muc 5/8, doi acc) de lan sau goi y
+    dung ma khong can mo dien thoai len xem."""
+    mapping = load_known()
+    now = time.strftime("%Y-%m-%d %H:%M")
+    cur = _norm_user(current) if current else ""
+    for u in usernames:
+        u = _norm_user(u)
+        if not u:
+            continue
+        entry = mapping.get(u, {"last_seen": "", "current": False})
+        entry["last_seen"] = now
+        mapping[u] = entry
+    if cur:
+        for u, entry in mapping.items():
+            entry["current"] = (u == cur)
+    save_known(mapping)
+    return mapping
 
 
 def _parse_nodes(d):
@@ -725,9 +779,7 @@ def _watch_one(d, like_cap, likes_done):
         likes_done += 1
         liked = True
         jitter(0.5, 1.5)
-    x = int(w * random.uniform(0.40, 0.60))
-    d.swipe(x, int(h * 0.72), x + random.randint(-15, 15),
-            int(h * 0.28), random.uniform(0.3, 0.6))
+    _swipe_next(d)
     jitter(0.5, 1.5)
     return likes_done, liked
 
@@ -824,6 +876,18 @@ def _type_human(d, field, text):
         field.set_text(text)  # dự phòng: máy nào không gõ được thì dán
 
 
+def _swipe_next(d):
+    """Vuốt lên sang video tiếp theo: vuốt DÀI và NHANH (0.80-0.88h xuống
+    0.12-0.20h trong 0.15-0.35s). Vuốt ngắn/chậm (bản cũ 0.72h->0.28h trong
+    0.3-0.6s) bị TikTok kéo trả lại, không qua được video khác — đúng bệnh
+    nuôi tự động gặp trên Redmi (lướt nhẹ quá nên kẹt 1 video)."""
+    w, h = d.window_size()
+    x = int(w * random.uniform(0.40, 0.60))
+    d.swipe(x, int(h * random.uniform(0.80, 0.88)),
+            x + random.randint(-15, 15), int(h * random.uniform(0.12, 0.20)),
+            random.uniform(0.15, 0.35))
+
+
 def warmup_feed(d, min_s=60, max_s=120, swipes=None):
     """Lướt feed như người thật trước khi đăng: xem mỗi video vài giây rồi
     vuốt lên. Chạy 1 lần mỗi lần chạy tool (không phải mỗi video).
@@ -849,9 +913,7 @@ def warmup_feed(d, min_s=60, max_s=120, swipes=None):
             time.sleep(random.uniform(12.0, 20.0))  # video hay thì xem lâu hơn
         else:
             time.sleep(random.uniform(5.0, 11.0))  # xem video vài giây như người thật
-        x = int(w * random.uniform(0.40, 0.60))
-        d.swipe(x, int(h * 0.72), x + random.randint(-15, 15),
-                int(h * 0.28), random.uniform(0.3, 0.6))
+        _swipe_next(d)
         jitter(0.5, 1.5)
 
 
@@ -1129,6 +1191,8 @@ def main():
                     help="chuyển điện thoại đang cắm USB sang ADB qua Wi-Fi để rút cáp")
     ap.add_argument("--set-niche", nargs=2, metavar=("USER", "NGACH"),
                     help="gán ngách cho 1 acc (vd: --set-niche sandracruzkay183 B)")
+    ap.add_argument("--known-accounts", action="store_true",
+                    help="in danh sách acc đã biết (đã lưu từ những lần liệt kê trước, không cần mở điện thoại)")
     ap.add_argument("--config-niches", action="store_true",
                     help="lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu")
     ap.add_argument("--nurture", action="store_true",
@@ -1169,6 +1233,21 @@ def main():
         log(f"✅ Đã config: @{user} -> ngách {niche}")
         return
 
+    if args.known_accounts:
+        known = load_known()
+        niches = load_niches()
+        if not known:
+            log("Chưa lưu acc nào — chạy mục 5 (Xem các acc) một lần để lưu danh sách.")
+            return
+        log(f"Các acc đã biết ({len(known)} acc, lưu từ những lần liệt kê trước):")
+        for u, e in sorted(known.items()):
+            mark = "  ← đang mở (lần liệt kê gần nhất)" if e.get("current") else ""
+            n = niches.get(u)
+            ntag = f" [ngách: {n}]" if n else " [chưa config ngách]"
+            seen = f" (thấy lần cuối {e['last_seen']})" if e.get("last_seen") else ""
+            log(f"  • @{u}{mark}{ntag}{seen}")
+        return
+
     if args.config_niches:
         try:
             d = _connect(args.serial)
@@ -1182,6 +1261,12 @@ def main():
             where = _dump_debug(d, Path(args.dir).resolve(), "account")
             log(f"❌ {e} — ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
             sys.exit(1)
+        known_before = load_known()
+        missing = [u for u in known_before if u not in accounts]
+        if missing:
+            log("ℹ️ Các acc đã biết nhưng hiện không đăng nhập trong app: "
+                f"{', '.join('@' + u for u in missing)}")
+        record_known(accounts, current)
         mapping = load_niches()
         log(f"Tổng {len(accounts)} acc đã đăng nhập trong app TikTok (gán ngách từng acc, Enter = giữ nguyên):")
         changed = False
@@ -1245,8 +1330,11 @@ def main():
                     n = niches.get(a)
                     ntag = f" [ngách: {n}]" if n else " [chưa config ngách]"
                     log(f"  • @{a}{mark}{ntag}")
+                record_known(accounts, current)
+                log("Đã lưu danh sách acc — lần sau mục 3/4/6/10 và GUI sẽ gợi ý từ danh sách này.")
             else:
                 now = switch_account(d, args.switch_to)
+                record_known([now], now)
                 log(f"Xong: acc đang mở là @{now}")
         except Exception as e:
             where = _dump_debug(d, Path(args.dir).resolve(), "account")

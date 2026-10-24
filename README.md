@@ -207,6 +207,24 @@ khác; bật VPN trước khi mở TikTok. Tùy chọn dòng lệnh: `--nurture-
 `--nurture-max` (giây/phiên), `--nurture-keywords`, `--nurture-likes`
 (0 = không like), `--account` để bắt buộc đúng acc.
 
+## Danh sách acc đã biết (để gợi ý đúng hơn)
+
+Mỗi lần chạy mục 5 (Xem các acc), mục 6 (Đổi acc) hoặc mục 8 (Config
+ngách) thành công, tool tự lưu danh sách acc vào file
+`known_accounts.json` cạnh `phone_poster.py` (username + lần thấy cuối +
+acc đang mở). Từ đó:
+
+- Chạy `phone_poster.py --known-accounts` là in ra danh sách đã lưu,
+  kèm ngách từng acc — không cần mở điện thoại.
+- Mục 3, 4, 6, 10 trong bat in danh sách này ra trước khi hỏi acc, khỏi
+  gõ mò username.
+- Trong GUI, ô acc thành hộp chọn gợi ý từ danh sách đã lưu (vẫn gõ tay
+  được acc mới); nút ↻ tải lại danh sách sau khi chạy "Xem các acc".
+
+Lần đầu: đăng nhập đủ các acc vào app rồi chạy mục 5 một lần là danh
+sách đầy đủ. Acc nào không còn đăng nhập trong app thì mục 8 sẽ báo
+riêng, không tự xóa khỏi danh sách đã biết.
+
 ## ADB qua Wi-Fi (rút cáp)
 
 Tool nói chuyện với điện thoại qua ADB nên rút cáp là mất kết nối, trừ khi

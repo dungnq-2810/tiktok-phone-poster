@@ -69,12 +69,14 @@ goto MENUDONE
 goto MENUDONE
 
 :M3
+"%PY%" phone_poster.py --known-accounts
 set /p "ACC=Dang vao acc nao? (nhap username, de trong = acc dang mo): "
 if "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run
 if not "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run --account "%ACC%"
 goto MENUDONE
 
 :M4
+"%PY%" phone_poster.py --known-accounts
 set /p "ACC=Dang vao acc nao? (nhap username, de trong = acc dang mo): "
 if "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox"
 if not "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --account "%ACC%"
@@ -85,6 +87,7 @@ goto MENUDONE
 goto MENUDONE
 
 :M6
+"%PY%" phone_poster.py --known-accounts
 set /p "ACC=Doi sang acc nao? (nhap username): "
 if "%ACC%"=="" goto MENUDONE
 "%PY%" phone_poster.py --switch-to "%ACC%"
@@ -103,6 +106,7 @@ call gui.bat
 goto MENUDONE
 
 :M10
+"%PY%" phone_poster.py --known-accounts
 set /p "ACC=Nuoi acc nao? (nhap username, de trong = acc dang mo): "
 set /p "KW=Tu khoa ngach, cach nhau bang dau phay (de trong = chi luot FYP): "
 "%PY%" phone_poster.py --nurture --account "%ACC%" --nurture-keywords "%KW%"
