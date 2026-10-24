@@ -42,7 +42,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-6"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-7"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -457,6 +457,19 @@ def list_logged_in_accounts(d, root=None):
     for handle, _y in _handles_on_screen(d):
         if handle not in handles:
             handles.append(handle)
+    # Ghi rõ bảng được nhận biết nhờ điều kiện nào — để phân biệt 'bảng
+    # chuyển acc thật chỉ có 1 acc' với 'sheet khác cũng có chữ Add account
+    # nên bị nhận nhầm là bảng chuyển acc'.
+    log(f"  (bảng nhận biết qua: {len(handles)} @handle, "
+        f"Add account={'có' if _exists(d, TXT_ADD_ACCOUNT) else 'không'}, "
+        f"nhãn Switch={'có' if _exists(d, TXT_SWITCHER) else 'không'})")
+    if len(handles) <= 1 and root is not None:
+        # Bảng 'mở được' mà chỉ thấy 1 acc là trường hợp cần chẩn đoán nhất
+        # (sai sheet? acc khác không hiện dạng @handle?) nên lưu dump luôn,
+        # chứ không im lặng trả về như trước.
+        where = _dump_debug(d, root, "account-switcher-1acc")
+        log(f"   Ảnh chụp + cấu trúc màn hình đã lưu ở {where} — gửi thư mục "
+            "này cho Muse để xem bảng vừa mở thực sự là bảng gì.")
     try:
         d.press("back")
     except Exception:
