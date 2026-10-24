@@ -45,7 +45,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-11"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-12"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -712,6 +712,9 @@ def _type_human(d, field, text):
             d.send_keys(text[i:i + n])
             i += n
             time.sleep(random.uniform(0.04, 0.22))
+            if random.random() < 0.15:
+                # thỉnh thoảng khựng lại như đang nghĩ câu chữ rồi gõ tiếp
+                time.sleep(random.uniform(0.8, 2.0))
     except Exception:
         field.set_text(text)  # dự phòng: máy nào không gõ được thì dán
 
@@ -737,7 +740,10 @@ def warmup_feed(d, min_s=60, max_s=120, swipes=None):
         elif time.time() >= end:
             break
         n += 1
-        time.sleep(random.uniform(5.0, 11.0))  # xem video vài giây như người thật
+        if random.random() < 0.25:
+            time.sleep(random.uniform(12.0, 20.0))  # video hay thì xem lâu hơn
+        else:
+            time.sleep(random.uniform(5.0, 11.0))  # xem video vài giây như người thật
         x = int(w * random.uniform(0.40, 0.60))
         d.swipe(x, int(h * 0.72), x + random.randint(-15, 15),
                 int(h * 0.28), random.uniform(0.3, 0.6))
@@ -801,14 +807,16 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
         d.screenshot(str(root / f"dryrun_{stem}.png"))
         return "dry-run"
 
+    log("→ Xem lại caption một lúc như người thật rồi mới bấm Đăng")
+    jitter(3.0, 8.0)
     log("→ Bấm Đăng")
     if not _try_click(d, TXT_POST, timeout=6.0):
         raise JobError("không thấy nút Đăng (Post)")
-    time.sleep(12)
+    jitter(10.0, 16.0)  # chờ tải lên: khoảng chờ cố định cũng là dấu vết máy móc
     if _exists(d, TXT_UPLOAD_ERROR):
         raise JobError("TikTok báo lỗi tải lên")
     if _exists(d, TXT_POST) and _exists(d, TXT_CAPTION_HINT):
-        raise JobError("vẫn ở màn hình đăng sau 12s — có thể chưa đăng được")
+        raise JobError("vẫn ở màn hình đăng sau khi chờ — có thể chưa đăng được")
 
     if not keep_on_phone:
         d.shell(["rm", remote])

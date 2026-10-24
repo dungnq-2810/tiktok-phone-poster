@@ -119,13 +119,24 @@ xác minh lại. Đừng để 2 acc tương tác chéo nhau (không follow/like
 
 ## Né phát hiện tự động hóa
 
-Tool đã né 3 dấu vết hành vi dễ lộ nhất: **bấm rải** — mỗi cú bấm rơi vào
+Tool đã né các dấu vết hành vi dễ lộ nhất: **bấm rải** — mỗi cú bấm rơi vào
 điểm ngẫu nhiên trong khung nút thay vì đúng tâm; **gõ caption** — gõ từng
-cụm 2–6 ký tự với nhịp ngẫu nhiên thay vì dán một phát; **khởi động phiên** —
-lướt feed 1–2 phút trước khi đăng thay vì vào thẳng luồng đăng. Cộng với nghỉ
-ngẫu nhiên 4–9 phút giữa các lần đăng và chạy trên máy thật + IP nhà, đây là
-mức rủi ro thấp nhất trong các kiểu tự động hóa — nhưng "không bị biết" tuyệt
-đối thì không tồn tại: acc chính đang ăn tiền thì cân nhắc đăng tay.
+cụm 2–6 ký tự với nhịp ngẫu nhiên, thỉnh thoảng khựng 0.8–2s như đang nghĩ
+câu chữ, thay vì dán một phát; **khởi động phiên** — lướt feed 1–2 phút
+trước khi đăng, mỗi video xem 5–11s, thỉnh thoảng xem lâu 12–20s, vuốt với
+tốc độ và vị trí ngẫu nhiên; **ngừng xem lại** — trước khi bấm Đăng thì dừng
+3–8s như người thật đọc lại caption; **chờ tải lên** — khoảng chờ sau khi
+bấm Đăng cũng ngẫu nhiên 10–16s thay vì đúng 12s. Cộng với nghỉ ngẫu nhiên
+4–9 phút giữa các lần đăng và chạy trên máy thật + IP nhà, đây là mức rủi
+ro thấp nhất trong các kiểu tự động hóa — nhưng "không bị biết" tuyệt đối
+thì không tồn tại: acc chính đang ăn tiền thì cân nhắc đăng tay.
+
+Ngoài code, kỷ luật dùng cũng quan trọng không kém: mỗi acc đăng 1–2
+video/ngày trong giai đoạn test; không đăng cùng 1 file lên nhiều acc; đăng
+xong hết video của acc này rồi mới đổi sang acc khác (đừng đổi acc liên
+tục); không đăng ngay sau khi đăng nhập (để warmup chạy); caption, hashtag
+và nhạc mỗi acc khác nhau; giữ VPN ổn định trong cả phiên, đừng để IP nhảy
+quốc gia giữa chừng.
 
 Sau khi đăng xong, video + caption được chuyển vào `_done/`; lỗi thì vào
 `_failed/` kèm thư mục `errors/<thời gian>_<tên video>/` chứa ảnh chụp màn
