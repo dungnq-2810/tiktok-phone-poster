@@ -42,6 +42,8 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+VERSION = "20261024-6"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
 VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".webm"}
@@ -698,6 +700,7 @@ def main():
                          "thoát (để test đổi acc)")
     ap.add_argument("--init", action="store_true", help="cài agent + kiểm tra kết nối rồi thoát")
     args = ap.parse_args()
+    log(f"TikTok Phone Poster, ban {VERSION}")
 
     if args.init:
         run_init(args.serial)
