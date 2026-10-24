@@ -90,19 +90,22 @@ class FakeDevice:
         if self.current_pkg != "com.zhiliaoapp.musically":
             return ('<hierarchy><node text="Vuốt lên để mở khóa" '
                     'bounds="[340,1200][740,1300]"/></hierarchy>')
-        if self.sheet_open:  # bảng chuyển tài khoản: các dòng acc + Thêm tài khoản
+        if self.sheet_open:  # bảng Switch account kiểu thật: dòng acc là nút
+            # mang content-desc username TRẦN (không @), trong là TextView cùng chữ
             if self.one_account:
                 return ('<hierarchy>'
-                        '<node text="Acc One" bounds="[300,700][700,780]"/>'
-                        '<node text="@acc_one" bounds="[300,780][700,840]"/>'
-                        '<node text="Add account" bounds="[300,1100][700,1180]"/>'
+                        '<node text="Switch account" content-desc="Switch account" bounds="[235,886][486,930]"/>'
+                        '<node text="" content-desc="acc_one" bounds="[0,976][656,1120]" clickable="true"/>'
+                        '<node text="acc_one" bounds="[168,1028][391,1068]"/>'
+                        '<node text="Add account" bounds="[168,1316][362,1356]"/>'
                         '</hierarchy>')
             return ('<hierarchy>'
-                    '<node text="Acc One" bounds="[300,700][700,780]"/>'
-                    '<node text="@acc_one" bounds="[300,780][700,840]"/>'
-                    '<node text="Acc Two" bounds="[300,900][700,980]"/>'
-                    '<node text="@acc_two" bounds="[300,980][700,1040]"/>'
-                    '<node text="Add account" bounds="[300,1100][700,1180]"/>'
+                    '<node text="Switch account" content-desc="Switch account" bounds="[235,886][486,930]"/>'
+                    '<node text="" content-desc="acc_one" bounds="[0,976][656,1120]" clickable="true"/>'
+                    '<node text="acc_one" bounds="[168,1028][391,1068]"/>'
+                    '<node text="" content-desc="acc_two" bounds="[0,1120][656,1264]" clickable="true"/>'
+                    '<node text="acc_two" bounds="[168,1172][444,1212]"/>'
+                    '<node text="Add account" bounds="[168,1316][362,1356]"/>'
                     '</hierarchy>')
         if self.on_profile:  # trang Hồ sơ: tên hiển thị trên cùng + @username
             name = "Acc One" if self.current == "acc_one" else "Acc Two"
@@ -127,7 +130,7 @@ class FakeDevice:
             return True
         if key in ("Acc One", "Acc Two"):
             return self.on_profile and not self.sheet_open
-        if key in ("@acc_one", "@acc_two"):
+        if key in ("acc_one", "acc_two"):
             return self.sheet_open
         if key == "Add account":
             return self.sheet_open
@@ -148,8 +151,8 @@ class FakeDevice:
             self.on_profile = True
         if key in ("Acc One", "Acc Two") and self.on_profile:
             self.sheet_open = True
-        if key in ("@acc_one", "@acc_two") and self.sheet_open:
-            self.current = key.lstrip("@")
+        if key in ("acc_one", "acc_two") and self.sheet_open:
+            self.current = key
             self.sheet_open = False
             self.on_profile = False
         if key in ("Next", "Tiếp", "Tiếp theo"):

@@ -42,7 +42,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-8"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-9"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -494,6 +494,67 @@ def _open_switcher(d):
     return _switcher_open(d)
 
 
+BARE_USER_RE = re.compile(r"^[A-Za-z0-9._]{2,30}$")
+SHEET_NON_USER = {"add account", "switch account", "switch accounts"}
+
+
+def _sheet_usernames(d):
+    """Username các acc trong bảng Switch account, theo thứ tự trong bảng.
+
+    Bảng này ghi username TRẦN (không có @): mỗi dòng acc là một nút bấm có
+    content-desc đúng bằng username, bên trong là TextView cùng chữ đó
+    (vd nút desc='sandracruzkay183' chứa TextView 'sandracruzkay183').
+    Regex @ cũ mù tịt dạng này — đó là lý do bảng mở ra mà chỉ thấy acc
+    đang mở (lấy @ từ trang Hồ sơ phía sau). Dự phòng: nếu không khớp nút
+    nào thì lấy các TextView username trần nằm dưới tiêu đề 'Switch account'
+    (trừ 'Add account')."""
+    root_el = _parse_nodes(d)
+    if root_el is None:
+        return []
+    nodes = list(root_el.iter("node"))
+    found = []
+    for node in nodes:
+        if node.get("clickable") != "true":
+            continue
+        desc = (node.get("content-desc") or "").strip()
+        if not desc or not BARE_USER_RE.match(desc):
+            continue
+        if desc.lower() in SHEET_NON_USER:
+            continue
+        b = _node_bounds(node)
+        if not b:
+            continue
+        for inner in nodes:
+            t = (inner.get("text") or "").strip()
+            if t != desc:
+                continue
+            ib = _node_bounds(inner)
+            if ib and b[0] <= ib[0] and b[1] <= ib[1] and b[2] >= ib[2] and b[3] >= ib[3]:
+                found.append(desc.lower())
+                break
+    if found:
+        return found
+    title_bottom = None
+    for node in nodes:
+        if (node.get("text") or "").strip().lower() == "switch account":
+            b = _node_bounds(node)
+            if b:
+                title_bottom = b[3]
+            break
+    if title_bottom is None:
+        return []
+    for node in nodes:
+        t = (node.get("text") or "").strip()
+        b = _node_bounds(node)
+        if not t or not b or b[1] < title_bottom:
+            continue
+        if not BARE_USER_RE.match(t) or t.lower() in SHEET_NON_USER:
+            continue
+        if t.lower() not in found:
+            found.append(t.lower())
+    return found
+
+
 def list_logged_in_accounts(d, root=None):
     """Trả về (acc đang mở, [mọi acc đã đăng nhập trong app, theo thứ tự
     trong bảng chuyển tài khoản]). Phân biệt rõ 2 trường hợp 'chỉ thấy 1':
@@ -511,14 +572,18 @@ def list_logged_in_accounts(d, root=None):
             log(f"   Ảnh chụp + cấu trúc màn hình đã lưu ở {where} — gửi thư "
                 "mục này cho Muse để xem nút chuyển acc trên máy này nằm ở đâu.")
         return current, [current]
-    handles = []
-    for handle, _y in _handles_on_screen(d):
-        if handle not in handles:
-            handles.append(handle)
+    sheet = _sheet_usernames(d)
+    if sheet:
+        handles = sheet  # bảng ghi username trần: thứ tự trong bảng là chuẩn
+    else:
+        handles = []
+        for handle, _y in _handles_on_screen(d):
+            if handle not in handles:
+                handles.append(handle)
     # Ghi rõ bảng được nhận biết nhờ điều kiện nào — để phân biệt 'bảng
     # chuyển acc thật chỉ có 1 acc' với 'sheet khác cũng có chữ Add account
     # nên bị nhận nhầm là bảng chuyển acc'.
-    log(f"  (bảng nhận biết qua: {len(handles)} @handle, "
+    log(f"  (bảng nhận biết qua: {len(handles)} acc, "
         f"Add account={'có' if _exists(d, TXT_ADD_ACCOUNT) else 'không'}, "
         f"nhãn Switch={'có' if _exists(d, TXT_SWITCHER) else 'không'})")
     if len(handles) <= 1 and root is not None:
@@ -555,8 +620,8 @@ def switch_account(d, target):
     if not _open_switcher(d):
         raise JobError("không mở được bảng chuyển tài khoản của TikTok")
     tapped = False
-    for kwargs in ({"text": f"@{target}"}, {"textContains": target},
-                   {"descriptionContains": target}):
+    for kwargs in ({"text": f"@{target}"}, {"text": target},
+                   {"textContains": target}, {"descriptionContains": target}):
         try:
             el = d(**kwargs)
             if el.exists(timeout=0.5):
