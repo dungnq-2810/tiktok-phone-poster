@@ -184,14 +184,48 @@ def _dump_debug(d, root: Path, stem: str):
 
 
 def _open_tiktok(d):
-    """Mở app TikTok (nếu chưa mở) và dẹp popup cho phép/thông báo nếu có."""
-    d.screen_on()
-    try:
-        d.unlock()
-    except Exception:
-        pass
-    d.app_start(TIKTOK_PKG, stop=False)
-    jitter(3.0, 5.0)
+    """Mở app TikTok và XÁC NHẬN nó đang ở foreground mới làm tiếp.
+
+    Bệnh cũ: chỉ gọi screen_on() + unlock() rồi làm tiếp mà không kiểm tra.
+    unlock() chỉ qua được khóa TRƯỢT — điện thoại khóa PIN/mẫu hình/vân tay
+    thì app_start chạy sau màn hình khóa, các bước sau bấm mò trên màn hình
+    khóa rồi mới lỗi khó hiểu ở cuối (không đọc được acc, không thấy nút...).
+    Giờ: thử tối đa 3 lần (đánh thức -> mở khóa trượt -> mở app -> kiểm tra
+    app đang foreground thật), không được thì báo rõ nguyên nhân và dừng.
+    """
+    last_pkg, last_screen_on = "", True
+    for _ in range(3):
+        try:
+            d.screen_on()
+        except Exception:
+            pass
+        jitter(0.8, 1.5)
+        try:
+            d.unlock()
+        except Exception:
+            pass
+        try:
+            d.app_start(TIKTOK_PKG, stop=False)
+        except Exception:
+            pass
+        jitter(2.0, 3.0)
+        try:
+            info = d.info or {}
+        except Exception:
+            info = {}
+        last_pkg = info.get("currentPackageName") or ""
+        last_screen_on = info.get("screenOn", True)
+        if last_screen_on and last_pkg == TIKTOK_PKG:
+            break
+    if not last_screen_on or last_pkg != TIKTOK_PKG:
+        if (not last_screen_on or not last_pkg
+                or "systemui" in last_pkg or "keyguard" in last_pkg):
+            raise JobError("Điện thoại vẫn đang KHÓA màn hình (hoặc tắt màn "
+                           "hình) — tool chỉ tự mở được khóa trượt, KHÔNG qua "
+                           "được PIN/mẫu hình/vân tay. Mở khóa tay rồi chạy "
+                           "lại; khi test nên tắt khóa màn hình cho khỏi kẹt.")
+        raise JobError(f"TikTok chưa mở được (đang ở app {last_pkg}) — mở tay "
+                       "TikTok trên điện thoại rồi chạy lại.")
     for _ in range(3):
         if not _try_click(d, TXT_DISMISS, timeout=0.8):
             break
@@ -283,6 +317,8 @@ def _goto_profile(d):
 def current_account(d):
     """@username của acc đang đăng nhập (đọc ở trang Hồ sơ của chính acc đó —
     @username nằm cao nhất trên màn hình). JobError nếu chưa đăng nhập."""
+    _open_tiktok(d)  # đảm bảo TikTok đang mở thật trước khi đọc (trước đây
+    # ensure_account gọi thẳng vào đây khi app còn chưa mở, nên đọc trượt)
     _goto_profile(d)
     handles = _handles_on_screen(d)
     if handles:
@@ -526,6 +562,26 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
 
 
 # ------------------------------------------------------------------ main ----
+def _connect(serial):
+    """Kết nối ADB/agent, lỗi thì báo rõ nguyên nhân thay vì traceback.
+
+    Bệnh thường gặp trên Redmi: MIUI tắt app agent ATX chạy nền (pin) nên
+    điện thoại vẫn cắm cáp mà tool không nói chuyện được — lúc đó chạy lại
+    menu 1, rồi vào Cài đặt > Pin cho app ATX chọn 'Không giới hạn' và
+    khóa nó trong đa nhiệm cho khỏi bị tắt."""
+    import uiautomator2 as u2
+    try:
+        d = u2.connect(serial or "")
+        name = d.info.get("productName")
+    except Exception:
+        raise JobError("không nói chuyện được với điện thoại (cáp lỏng, chưa "
+                       "bật USB debugging, hoặc MIUI đã tắt app agent ATX — "
+                       "chạy lại menu 1 cài agent, cho app ATX chạy pin "
+                       "'Không giới hạn' rồi thử lại)")
+    log(f"Đã kết nối điện thoại: {name}")
+    return d
+
+
 def run_init(serial):
     log("Cài agent uiautomator2 lên điện thoại (cần cắm USB + đã bật USB debugging)...")
     cmd = [sys.executable, "-m", "uiautomator2", "init"]
@@ -577,9 +633,11 @@ def main():
         return
 
     if args.list_accounts or args.switch_to:
-        import uiautomator2 as u2
-        d = u2.connect(args.serial or "")
-        log(f"Đã kết nối điện thoại: {d.info.get('productName')}")
+        try:
+            d = _connect(args.serial)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
         try:
             if args.list_accounts:
                 current, accounts = list_logged_in_accounts(d)
@@ -596,7 +654,6 @@ def main():
             sys.exit(1)
         return
 
-    import uiautomator2 as u2
     root = Path(args.dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
     jobs = find_jobs(root)
@@ -607,8 +664,11 @@ def main():
         jobs = jobs[: args.max_posts]
     log(f"Hàng đợi: {len(jobs)} video trong {root}")
 
-    d = u2.connect(args.serial or "")
-    log(f"Đã kết nối điện thoại: {d.info.get('productName')}")
+    try:
+        d = _connect(args.serial)
+    except JobError as e:
+        log(f"❌ {e} — chưa đăng gì.")
+        return
     tag = args.account_tag.strip()
     prefix = f"[{tag}] " if tag else ""
 

@@ -132,6 +132,20 @@ Sau khi đăng xong, video + caption được chuyển vào `_done/`; lỗi thì
 hình + cấu trúc giao diện tại bước lỗi — gửi thư mục đó cho Muse là chẩn
 đoán được TikTok đã đổi giao diện ở đâu.
 
+## Điện thoại tắt màn hình / khóa màn hình
+
+Trước mỗi lần mở TikTok, tool tự đánh thức màn hình + vuốt mở khóa trượt,
+rồi **kiểm tra TikTok có đang ở foreground thật không** mới làm tiếp. Nếu
+không được, nó dừng ngay và báo rõ thay vì bấm mò trên màn hình khóa:
+
+- Báo `KHÓA màn hình` → điện thoại đang khóa PIN/mẫu hình/vân tay: tool
+  không tự qua được loại khóa này. Mở khóa tay rồi chạy lại; khi test nên
+  tắt khóa màn hình cho khỏi kẹt.
+- Báo `không nói chuyện được với điện thoại` → cáp lỏng, chưa bật USB
+  debugging, hoặc MIUI đã tắt app agent ATX chạy nền: chạy lại menu 1, rồi
+  vào Cài đặt > Pin cho app ATX chọn "Không giới hạn" và khóa nó trong đa
+  nhiệm cho khỏi bị tắt.
+
 ## Lưu ý thật
 
 - Lần đăng thật đầu tiên **chưa kiểm chứng được từ phía Muse** (không có

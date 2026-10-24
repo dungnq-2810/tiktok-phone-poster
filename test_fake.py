@@ -31,7 +31,15 @@ class FakeDevice:
         self.current = "acc_one"
         self.on_profile = False
         self.sheet_open = False
+        # trạng thái màn hình: screen_on_flag + keyguard ("none"/"slide"/"pin")
+        self.screen_on_flag = True
+        self.keyguard = "none"
+        self.current_pkg = ""
         self._boxes = {}            # mỗi phần tử một khung tọa độ riêng (như máy thật)
+    @property
+    def info(self):
+        return {"productName": "Fake", "screenOn": self.screen_on_flag,
+                "currentPackageName": self.current_pkg}
     def bounds_for(self, key):
         if key not in self._boxes:
             i = len(self._boxes)
@@ -41,9 +49,17 @@ class FakeDevice:
     # -- u2 surface --
     def shell(self, cmd): self.calls.append(("shell", tuple(cmd)))
     def push(self, local, remote): self.pushed.append((local, remote))
-    def screen_on(self): pass
-    def unlock(self): pass
-    def app_start(self, pkg, stop=False): self.calls.append(("app_start", pkg))
+    def screen_on(self): self.screen_on_flag = True
+    def unlock(self):
+        if self.keyguard == "slide":
+            self.keyguard = "none"
+    def app_start(self, pkg, stop=False):
+        self.calls.append(("app_start", pkg))
+        # màn hình tắt hoặc còn khóa: app chạy sau màn hình khóa, không lên foreground
+        if self.screen_on_flag and self.keyguard == "none":
+            self.current_pkg = pkg
+        else:
+            self.current_pkg = "com.android.systemui"
     def window_size(self): return (1080, 2400)
     def click(self, x, y):
         self.calls.append(("tap", x, y))
@@ -64,6 +80,9 @@ class FakeDevice:
         if key == "back":
             self.sheet_open = False
     def dump_hierarchy(self):
+        if self.current_pkg != "com.zhiliaoapp.musically":
+            return ('<hierarchy><node text="Vuốt lên để mở khóa" '
+                    'bounds="[340,1200][740,1300]"/></hierarchy>')
         if self.sheet_open:  # bảng chuyển tài khoản: 2 dòng acc + Thêm tài khoản
             return ('<hierarchy>'
                     '<node text="Acc One" bounds="[300,700][700,780]"/>'
@@ -206,5 +225,32 @@ try:
     raise AssertionError("đổi sang acc không tồn tại phải báo lỗi")
 except pp.JobError:
     print("switch_account OK (acc không có trong máy -> JobError, không đăng bừa)")
+
+# ---- màn hình tắt/khóa: mở TikTok phải xác nhận foreground, không bấm mò ----
+devL = FakeDevice()
+devL.screen_on_flag = False
+devL.keyguard = "slide"   # khóa trượt: đánh thức + vuốt là qua
+pp._open_tiktok(devL)
+assert devL.screen_on_flag and devL.current_pkg == "com.zhiliaoapp.musically"
+print("_open_tiktok OK (màn hình tắt + khóa trượt -> tự đánh thức, mở được TikTok)")
+
+devP = FakeDevice()
+devP.keyguard = "pin"     # khóa PIN: tool không tự qua được
+try:
+    pp._open_tiktok(devP)
+    raise AssertionError("khóa PIN mà vẫn mở được là sai")
+except pp.JobError as e:
+    assert "KHÓA màn hình" in str(e), e
+    print("_open_tiktok OK (khóa PIN -> báo rõ KHÓA màn hình, dừng thay vì bấm mò)")
+
+devP2 = FakeDevice()
+devP2.keyguard = "pin"
+try:
+    pp.list_logged_in_accounts(devP2)
+    raise AssertionError("khóa PIN mà vẫn lấy được acc là sai")
+except pp.JobError as e:
+    assert "KHÓA màn hình" in str(e), e
+    print("list_logged_in_accounts OK (điện thoại khóa -> lỗi rõ KHÓA màn hình, "
+          "không còn lỗi mơ hồ 'không đọc được @username')")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")
