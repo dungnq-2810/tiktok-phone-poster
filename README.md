@@ -128,6 +128,34 @@ Gom đăng theo acc (đăng hết acc A rồi mới đổi sang acc B) thay vì 
 lại từng video — ít lần đổi thì giống người thật hơn và ít bị TikTok hỏi
 xác minh lại. Đừng để 2 acc tương tác chéo nhau (không follow/like chéo).
 
+## Quét UI 1 lượt, lưu file map rồi auto theo file
+
+Tìm nút live bằng text phụ thuộc ngôn ngữ/phiên bản TikTok, còn bấm tọa
+độ dự phòng thì hên xui. Cách chắc ăn: quét 1 lượt từng màn hình, lưu
+lại element thật của đúng bản TikTok trên máy rồi auto theo file đó.
+
+Mở từng màn hình trên điện thoại rồi chạy mục 11 (hoặc
+`python phone_poster.py --scan-ui TEN`), mỗi màn 1 tên:
+
+- `feed` — màn hình chính (thanh dưới + nút Search + nút Tạo)
+- `profile` — trang Hồ sơ của mình
+- `sheet` — bảng chuyển tài khoản đang mở
+- `gallery` — màn hình chọn video sau khi bấm Tạo
+- `editor` — màn hình biên tập sau khi chọn video (nút Tiếp)
+- `caption` — màn hình nhập mô tả + nút Đăng
+
+Mỗi lần quét lưu `ui_map/<TEN>.xml` (cây UI thô) + `ui_map/<TEN>.json`
+(element gọn: text, content-desc, resource-id, clickable, bounds) và in
+ra role nào khớp element nào trong màn đó — nhìn là biết tool sẽ bấm
+cái gì. Các lần chạy sau tự ưu tiên selector trong file map
+(resource-id trước, vì nó không đổi theo ngôn ngữ hay text hiển thị);
+không có map thì vẫn tìm live kiểu cũ. Map được đọc lúc khởi động
+tool. TikTok update app thì quét lại (file JSON có ghi version TikTok).
+
+Chế độ chặt: chạy thêm `--strict-ui` (hoặc đặt biến môi trường
+`PHONE_POSTER_STRICT_UI=1`) để tắt hết bấm tọa độ dự phòng — tìm
+element không thấy thì báo lỗi kèm ảnh chụp + cây UI, không bấm bừa.
+
 ## Né phát hiện tự động hóa
 
 Tool đã né các dấu vết hành vi dễ lộ nhất: **bấm rải** — mỗi cú bấm rơi vào

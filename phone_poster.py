@@ -47,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-19"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-20"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -341,9 +341,164 @@ def _click_first_gallery_item(d):
         d.click(best[1] + jx, best[2] + jy)
         return True
     # Dự phòng: vị trí tương đối của ô đầu tiên trong lưới
+    if STRICT_UI:
+        raise JobError("không nhận diện được ô video trong lưới bằng element "
+                       "— strict mode không bấm tọa độ dự phòng")
     d.click(int(w * 0.17) + random.randint(-10, 10),
             int(h * 0.32) + random.randint(-10, 10))
     return True
+
+
+# ------------------------------------------------- ui map (quet 1 luot, luu file, auto theo file) ----
+# Y tuong: chay 1 luot quet (--scan-ui TEN_MAN_HINH) tren tung man hinh
+# TikTok that, luu cay UI vao ui_map/<ten>.xml + .json (gom resource-id,
+# text, content-desc, clickable, bounds). Luc auto, tool doc file map
+# truoc: resource-id la dinh danh on dinh nhat (khong doi theo ngon ngu
+# hay text hien thi), nen bam theo map chinh xac hon tim live bang text.
+# STRICT_UI: tat het bam toa do du phong — tim element khong thay thi
+# bao loi kem dump, khong bam bua.
+STRICT_UI = os.environ.get("PHONE_POSTER_STRICT_UI") == "1"
+
+
+def _ui_map_dir():
+    override = os.environ.get("PHONE_POSTER_UI_MAP")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "ui_map"
+
+
+UI_ROLE_VARIANTS = {
+    "profile_tab": TXT_PROFILE, "home_tab": TXT_HOME,
+    "search_btn": TXT_SEARCH, "create_btn": TXT_CREATE,
+    "upload_btn": TXT_UPLOAD, "next_btn": TXT_NEXT,
+    "post_btn": TXT_POST, "caption_field": TXT_CAPTION_HINT,
+    "add_account_btn": TXT_ADD_ACCOUNT,
+}
+
+
+def _match_role(elements, variants):
+    """Element khop tot nhat cho 1 role trong list da distill: khop chinh
+    xac (text/desc) + clickable truoc, roi moi toi Contains."""
+    for want_click in (True, False):
+        for v in variants:
+            for el in elements:
+                if want_click and not el.get("clickable"):
+                    continue
+                if el.get("text") == v or el.get("desc") == v:
+                    return el
+    for want_click in (True, False):
+        for v in variants:
+            for el in elements:
+                if want_click and not el.get("clickable"):
+                    continue
+                if v and (v in (el.get("text") or "")
+                          or v in (el.get("desc") or "")):
+                    return el
+    return None
+
+
+def scan_ui_screen(d, name):
+    """Quét màn hình HIỆN TẠI (không tự chuyển màn hình — người dùng mở sẵn
+    màn cần quét trên điện thoại rồi chạy lệnh): lưu XML thô + JSON gọn vào
+    ui_map/<name>.xml/.json. Trả (số element, {role: element khớp tốt nhất}).
+    JSON ghi cả version TikTok (best-effort) để biết map có cũ không."""
+    try:
+        xml = d.dump_hierarchy()
+    except Exception:
+        xml = ""
+    if not xml:
+        raise JobError("không đọc được cây UI màn hình hiện tại — kiểm tra "
+                       "điện thoại đã mở TikTok và agent còn sống")
+    try:
+        root_el = ET.fromstring(xml)
+    except Exception:
+        root_el = None
+    elements = []
+    if root_el is not None:
+        for node in root_el.iter("node"):
+            elements.append({
+                "text": (node.get("text") or "").strip(),
+                "desc": (node.get("content-desc") or "").strip(),
+                "res": node.get("resource-id") or "",
+                "class": node.get("class") or "",
+                "clickable": node.get("clickable") == "true",
+                "bounds": _node_bounds(node),
+            })
+    version = None
+    try:
+        out = d.shell(["dumpsys", "package", TIKTOK_PKG]) or ""
+        m = re.search(r"versionName=(\S+)", out)
+        if m:
+            version = m.group(1)
+    except Exception:
+        pass
+    outdir = _ui_map_dir()
+    outdir.mkdir(parents=True, exist_ok=True)
+    (outdir / f"{name}.xml").write_text(xml, encoding="utf-8")
+    (outdir / f"{name}.json").write_text(json.dumps(
+        {"screen": name, "tiktok_version": version, "elements": elements},
+        ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    roles = {role: _match_role(elements, variants)
+             for role, variants in UI_ROLE_VARIANTS.items()}
+    return len(elements), roles
+
+
+_UI_MAP_CACHE = None
+
+
+def load_ui_map():
+    """Doc tat ca file ui_map/*.json (cache theo process — chay lai lenh la
+    doc map moi). Tra {ten_man_hinh: [elements]}."""
+    global _UI_MAP_CACHE
+    if _UI_MAP_CACHE is not None:
+        return _UI_MAP_CACHE
+    m = {}
+    d = _ui_map_dir()
+    if d.is_dir():
+        for f in sorted(d.glob("*.json")):
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                els = data.get("elements", []) if isinstance(data, dict) else []
+                if els:
+                    m[f.stem] = els
+            except Exception:
+                continue
+    _UI_MAP_CACHE = m
+    return m
+
+
+def _mapped_selector(variants):
+    """Selector ghi san tu file map: resource-id thang luon neu co (on dinh
+    nhat), khong thi text/desc chinh xac. None = map khong biet role nay."""
+    best = None
+    for screen in sorted(load_ui_map()):
+        el = _match_role(load_ui_map()[screen], variants)
+        if not el:
+            continue
+        if el.get("res"):
+            return {"resourceId": el["res"]}
+        if best is None:
+            if el.get("text"):
+                best = {"text": el["text"]}
+            elif el.get("desc"):
+                best = {"description": el["desc"]}
+    return best
+
+
+def _try_click_mapped(d, variants, timeout=6.0, region=None):
+    """Bấm theo file map trước, rồi mới về tìm live kiểu cũ. Có map thì
+    lần bấm này chính xác hơn vì resource-id không đổi theo ngôn ngữ hay
+    text hiển thị; không có map thì hành vi y hệt _try_click."""
+    sel = _mapped_selector(variants)
+    if sel is not None:
+        try:
+            el = d(**sel)
+            if el.exists(timeout=0.5) and _tap_human(d, el):
+                log(f"   (map) bấm theo file map: {sel}")
+                return True
+        except Exception:
+            pass
+    return _try_click(d, variants, timeout=timeout, region=region)
 
 
 # ------------------------------------------------------------- accounts ----
@@ -563,8 +718,11 @@ def _own_profile_handle(d):
 
 def _goto_profile(d):
     """Mở tab Hồ sơ (Profile) ở thanh điều hướng dưới."""
-    if _try_click(d, TXT_PROFILE, timeout=4.0, region="bottom"):
+    if _try_click_mapped(d, TXT_PROFILE, timeout=4.0, region="bottom"):
         jitter(1.5, 2.5)
+        return
+    if STRICT_UI:
+        log("   (strict) không thấy tab Hồ sơ bằng element — KHÔNG bấm tọa độ dự phòng")
         return
     w, h = d.window_size()
     d.click(int(w * 0.90), int(h * 0.94))  # dự phòng: tab cuối bên phải = Hồ sơ
@@ -703,19 +861,21 @@ def _open_switcher(d):
     # tên). Lưu ý: mũi tên chỉ là hình vẽ trong nút, không phải node riêng;
     # điểm cũ (0.68w, 0.06h) rơi ra ngoài nút cha đúng 2px, trúng nút
     # 'Profile views' bên cạnh nên vô dụng — điểm mới nằm trong nút cha.
-    for xf, yf in ((0.5, 0.055), (0.5, 0.08), (0.64, 0.07)):
-        try:
-            d.click(int(w * xf), int(h * yf))
-        except Exception:
-            pass
-        jitter(1.0, 2.0)
-        if _wait_switcher(d):
-            return True
-        try:
-            d.press("back")
-        except Exception:
-            pass
-        jitter(0.8, 1.5)
+    # Strict mode bỏ hẳn đoạn này: không thấy nút thì báo lỗi, không bấm bừa.
+    if not STRICT_UI:
+        for xf, yf in ((0.5, 0.055), (0.5, 0.08), (0.64, 0.07)):
+            try:
+                d.click(int(w * xf), int(h * yf))
+            except Exception:
+                pass
+            jitter(1.0, 2.0)
+            if _wait_switcher(d):
+                return True
+            try:
+                d.press("back")
+            except Exception:
+                pass
+            jitter(0.8, 1.5)
     for kwargs in ({"description": "Profile"}, {"text": "Profile"},
                    {"description": "Hồ sơ"}, {"text": "Hồ sơ"},
                    {"descriptionContains": "Profile"}, {"textContains": "Profile"},
@@ -986,7 +1146,7 @@ def _nurture_search(d, keyword, like_cap, likes_done, watched, per_keyword=6):
     lại. Mở không được (giao diện khác bản) thì trả (..., False) để phiên
     chính vẫn nuôi bằng FYP — 1 bước phụ không được crash cả phiên."""
     try:
-        if not _try_click(d, TXT_SEARCH, timeout=3.0, region="top"):
+        if not _try_click_mapped(d, TXT_SEARCH, timeout=3.0, region="top"):
             log("   (không mở được ô tìm kiếm trên giao diện này — bỏ qua, nuôi bằng FYP)")
             return watched, likes_done, False
         jitter(1.0, 2.0)
@@ -1029,7 +1189,7 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
     log(f"→ Bắt đầu nuôi tự động ~{budget / 60:.0f} phút: xem hết video rồi "
         f"lướt, like tối đa {like_cap}/phiên, không comment/follow tự động.")
     _open_tiktok(d)
-    _try_click(d, TXT_HOME, timeout=3.0, region="bottom")
+    _try_click_mapped(d, TXT_HOME, timeout=3.0, region="bottom")
     jitter(2.0, 3.0)
     watched = 0
     likes_done = 0
@@ -1190,7 +1350,7 @@ def warmup_feed(d, min_s=60, max_s=120, swipes=None):
     else:
         secs = 0
     log(f"→ Khởi động phiên: lướt feed ~{int(secs)}s cho giống người thật")
-    _try_click(d, TXT_HOME, timeout=3.0, region="bottom")
+    _try_click_mapped(d, TXT_HOME, timeout=3.0, region="bottom")
     jitter(2.0, 3.0)
     w, h = d.window_size()
     end = time.time() + secs
@@ -1228,12 +1388,15 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     _open_tiktok(d)
 
     log("→ Mở màn hình tạo video")
-    if not _try_click(d, TXT_CREATE, timeout=5.0):
+    if not _try_click_mapped(d, TXT_CREATE, timeout=5.0):
+        if STRICT_UI:
+            raise JobError("không thấy nút Tạo (Create) bằng element — strict "
+                           "mode không bấm tọa độ dự phòng")
         w, h = d.window_size()
         d.click(w // 2 + random.randint(-12, 12),
                 int(h * 0.93) + random.randint(-8, 8))  # nút + ở giữa thanh dưới
         jitter()
-    if not _try_click(d, TXT_UPLOAD, timeout=8.0):
+    if not _try_click_mapped(d, TXT_UPLOAD, timeout=8.0):
         raise JobError("không thấy nút Tải lên (Upload) trong màn hình tạo video")
     jitter(2.0, 3.5)
 
@@ -1242,17 +1405,26 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     jitter(2.0, 3.5)
 
     for _ in range(4):  # các màn hình biên tập đều qua nút Tiếp/Next
-        if not _try_click(d, TXT_NEXT, timeout=4.0):
+        if not _try_click_mapped(d, TXT_NEXT, timeout=4.0):
             break
         jitter(2.0, 3.5)
 
     log("→ Nhập caption")
     field = None
-    for v in TXT_CAPTION_HINT:
-        el = d(textContains=v)
-        if el.exists(timeout=0.5):
-            field = el
-            break
+    sel = _mapped_selector(TXT_CAPTION_HINT)  # ô caption theo file map trước
+    if sel is not None:
+        try:
+            el = d(**sel)
+            if el.exists(timeout=0.5):
+                field = el
+        except Exception:
+            pass
+    if field is None:
+        for v in TXT_CAPTION_HINT:
+            el = d(textContains=v)
+            if el.exists(timeout=0.5):
+                field = el
+                break
     if field is None:
         edits = d(className="android.widget.EditText")
         if edits.exists(timeout=2.0):
@@ -1270,7 +1442,7 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     log("→ Xem lại caption một lúc như người thật rồi mới bấm Đăng")
     jitter(3.0, 8.0)
     log("→ Bấm Đăng")
-    if not _try_click(d, TXT_POST, timeout=6.0):
+    if not _try_click_mapped(d, TXT_POST, timeout=6.0):
         raise JobError("không thấy nút Đăng (Post)")
     jitter(10.0, 16.0)  # chờ tải lên: khoảng chờ cố định cũng là dấu vết máy móc
     if _exists(d, TXT_UPLOAD_ERROR):
@@ -1502,8 +1674,21 @@ def main():
                     help="từ khóa ngách cách nhau bằng dấu phẩy (để trống = chỉ lướt FYP)")
     ap.add_argument("--nurture-likes", type=int, default=8,
                     help="like tối đa mỗi phiên nuôi (0 = không like)")
+    ap.add_argument("--scan-ui", default="", metavar="TEN_MAN_HINH",
+                    help="quét cây UI màn hình HIỆN TẠI trên điện thoại ra "
+                         "ui_map/<TEN>.xml + .json rồi thoát (mở sẵn màn cần "
+                         "quét trên điện thoại trước, vd: feed, profile, "
+                         "sheet, gallery, editor, caption)")
+    ap.add_argument("--strict-ui", action="store_true",
+                    help="chế độ chặt: không bấm tọa độ dự phòng, tìm element "
+                         "không thấy thì báo lỗi kèm dump thay vì bấm bừa")
     args = ap.parse_args()
     log(f"TikTok Phone Poster, ban {VERSION}")
+
+    global STRICT_UI
+    if args.strict_ui or os.environ.get("PHONE_POSTER_STRICT_UI") == "1":
+        STRICT_UI = True
+        log("Chế độ STRICT-UI: tắt hết bấm tọa độ dự phòng.")
 
     if args.init:
         try:
@@ -1515,6 +1700,23 @@ def main():
 
     if args.wifi:
         run_wifi()
+        return
+
+    if args.scan_ui:
+        try:
+            d = _connect(args.serial)
+            n, roles = scan_ui_screen(d, args.scan_ui)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
+        log(f"✅ Đã lưu ui_map/{args.scan_ui}.xml + .json ({n} element)")
+        for role, el in roles.items():
+            if el:
+                log(f"   {role}: text={el['text']!r} desc={el['desc']!r} "
+                    f"res={el['res']!r} clickable={el['clickable']} "
+                    f"bounds={el['bounds']}")
+            else:
+                log(f"   {role}: (không thấy trong màn này)")
         return
 
     if args.set_niche:

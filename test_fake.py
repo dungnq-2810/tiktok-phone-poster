@@ -1,5 +1,5 @@
 """Test logic phone_poster bằng thiết bị giả — chạy: python test_fake.py"""
-import sys, time, pathlib, tempfile, re
+import sys, time, pathlib, tempfile, re, json
 import xml.etree.ElementTree as ET
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 _real_sleep = time.sleep
@@ -42,6 +42,7 @@ class FakeDevice:
         self.video_idx = 0        # video FYP hiện tại: vuốt là đổi (để test vuốt có kiểm chứng)
         self.stuck_video = False  # True = vuốt không đổi video (giả lập kẹt 1 video)
         self.feed_author = None   # @ tác giả video đang xem ở FYP (nửa dưới màn hình)
+        self.no_profile = False   # True = tab Profile không tồn tại (test strict mode)
         self._auto_i = 0          # đếm riêng cho hộp tự động (không tính hộp định sẵn)
         self._boxes = {           # nút điều hướng ở đúng vùng như TikTok thật
             "Home": {"left": 100, "top": 2200, "right": 260, "bottom": 2350},
@@ -160,19 +161,22 @@ class FakeDevice:
                 '<node clickable="true" bounds="[360,300][720,660]" class="android.widget.FrameLayout"/>'
                 f'{feed}</hierarchy>')
     def __call__(self, **kw):
-        key = kw.get("text") or kw.get("description") or kw.get("textContains") \
-            or kw.get("descriptionContains") or kw.get("className") or "?"
+        key = kw.get("resourceId") or kw.get("text") or kw.get("description") \
+            or kw.get("textContains") or kw.get("descriptionContains") \
+            or kw.get("className") or "?"
         el = FakeEl(self, key)
         self._els[key] = el
         return el
     # -- behaviour --
     def el_exists(self, key):
+        if key.startswith("com.zhiliaoapp.musically:id/"):
+            return True  # element co resource-id trong file map
         if key in ("Tìm kiếm", "Search"):
             return True  # nut tim kiem tren trang chu (de test duong tim kiem ngach)
         if key in ("Home", "Trang chủ"):
             return True  # tab Home (de test nurture khoi quay 3s tim Home)
         if key in ("Profile", "Hồ sơ"):
-            return True
+            return not self.no_profile
         if key in ("Acc One", "Acc Two"):
             return self.on_profile and not self.sheet_open
         if key in ("acc_one", "acc_two"):
@@ -604,5 +608,59 @@ ld2, liked2 = pp._watch_one(devW2, 8, 0, idx=1)
 assert (ld2, liked2) == (0, False), (ld2, liked2)
 assert not any(c[0] == "double_click" for c in devW2.calls), devW2.calls
 print("watch_one OK (log realtime video #N; ket video thi khong like mu)")
+
+# --- ui map: quet man hinh -> file, auto theo map (resource-id truoc), strict tat bam toa do
+import os as _os
+_mapdir = tmp / "ui_map"
+_os.environ["PHONE_POSTER_UI_MAP"] = str(_mapdir)
+pp._UI_MAP_CACHE = None
+devM = FakeDevice()
+devM.current_pkg = "com.zhiliaoapp.musically"
+devM.on_profile = True
+n, roles = pp.scan_ui_screen(devM, "profile")
+assert (_mapdir / "profile.xml").exists() and (_mapdir / "profile.json").exists()
+assert n == 2, n
+assert set(roles) == set(pp.UI_ROLE_VARIANTS)
+print(f"scan_ui OK (luu {n} element + role summary)")
+
+(_mapdir / "feed.json").write_text(json.dumps({"screen": "feed", "elements": [
+    {"text": "Profile", "desc": "Profile, Tab 5 of 5",
+     "res": "com.zhiliaoapp.musically:id/profile_tab",
+     "class": "android.widget.FrameLayout",
+     "clickable": True, "bounds": [820, 2200, 980, 2350]},
+]}, ensure_ascii=False), encoding="utf-8")
+pp._UI_MAP_CACHE = None
+devR = FakeDevice()
+assert pp._try_click_mapped(devR, ["Profile", "Hồ sơ"]) is True
+assert ("click", "com.zhiliaoapp.musically:id/profile_tab") in devR.calls, devR.calls
+print("try_click_mapped OK (uu tien resource-id tu file map)")
+
+pp._UI_MAP_CACHE = None
+_os.environ["PHONE_POSTER_UI_MAP"] = str(tmp / "ui_map_empty")
+devG = FakeDevice()
+assert pp._try_click_mapped(devG, ["Profile", "Hồ sơ"]) is True
+print("try_click_mapped OK (khong map thi fallback tim live)")
+
+devS2 = FakeDevice()
+devS2.no_profile = True
+pp.STRICT_UI = True
+pp._goto_profile(devS2)
+assert not any(c[0] == "tap" for c in devS2.calls), devS2.calls
+pp.STRICT_UI = False
+pp._goto_profile(devS2)
+assert ("tap", 972, 2256) in devS2.calls, devS2.calls
+print("strict_ui OK (strict thi khong bam toa do du phong)")
+
+devG2 = FakeDevice()
+devG2.current_pkg = "com.zhiliaoapp.musically"
+devG2.on_profile = True
+pp.STRICT_UI = True
+try:
+    pp._click_first_gallery_item(devG2)
+    raise AssertionError("strict phai loi khi khong nhan dien duoc o video")
+except pp.JobError:
+    print("strict_ui OK (luoi khong co o video -> loi, khong bam bua)")
+pp.STRICT_UI = False
+assert pp._click_first_gallery_item(devG2) is True
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")
