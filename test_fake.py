@@ -38,14 +38,25 @@ class FakeDevice:
         self.one_account = False  # app chỉ đăng nhập 1 acc (sheet chỉ có acc_one)
         self.hide_handle = 0      # số lần dump trang Hồ sơ đầu tiên chưa có @handle (giả lập header tải chậm)
         self.profile_dumps = 0
-        self._boxes = {}            # mỗi phần tử một khung tọa độ riêng (như máy thật)
+        self.video_idx = 0        # video FYP hiện tại: vuốt là đổi (để test vuốt có kiểm chứng)
+        self.stuck_video = False  # True = vuốt không đổi video (giả lập kẹt 1 video)
+        self._auto_i = 0          # đếm riêng cho hộp tự động (không tính hộp định sẵn)
+        self._boxes = {           # nút điều hướng ở đúng vùng như TikTok thật
+            "Home": {"left": 100, "top": 2200, "right": 260, "bottom": 2350},
+            "Trang chủ": {"left": 100, "top": 2200, "right": 260, "bottom": 2350},
+            "Profile": {"left": 820, "top": 2200, "right": 980, "bottom": 2350},
+            "Hồ sơ": {"left": 820, "top": 2200, "right": 980, "bottom": 2350},
+            "Search": {"left": 900, "top": 100, "right": 1000, "bottom": 200},
+            "Tìm kiếm": {"left": 900, "top": 100, "right": 1000, "bottom": 200},
+        }
     @property
     def info(self):
         return {"productName": "Fake", "screenOn": self.screen_on_flag,
                 "currentPackageName": self.current_pkg}
     def bounds_for(self, key):
         if key not in self._boxes:
-            i = len(self._boxes)
+            i = self._auto_i
+            self._auto_i += 1
             self._boxes[key] = {"left": 100, "top": 200 + i * 300,
                                 "right": 300, "bottom": 400 + i * 300}
         return self._boxes[key]
@@ -81,6 +92,10 @@ class FakeDevice:
         self.calls.append(("swipe", sx, sy, ex, ey,
                            dur if duration is None else duration))
         self._swipe_unlock(sy, ey)
+        if not self.stuck_video:
+            self.video_idx += 1
+    def dump(self):
+        return f"<hierarchy video='{self.video_idx}' current='{self.current}'/>"
     def screenshot(self, path): pathlib.Path(path).write_bytes(b"png")
     def send_keys(self, t, clear=False): self.captions.append(t)
     def press(self, key):
@@ -516,5 +531,40 @@ assert not any(c[0] == "double_click" for c in devA.calls)
 print("nurture_all OK (2 acc: 1 tim kiem theo ngach, 1 luot FYP; doi acc co xac nhan)")
 del os.environ["PHONE_POSTER_CONFIG"]
 del os.environ["PHONE_POSTER_NICHE_KW"]
+
+# --- vuot co kiem chung: qua video -> True + 1 lan vuot; ket -> False + 4 lan (3 fling + 1 keo cham)
+devV = FakeDevice()
+assert pp._swipe_next_verified(devV) is True
+assert sum(1 for c in devV.calls if c[0] == "swipe") == 1
+devS = FakeDevice()
+devS.stuck_video = True
+assert pp._swipe_next_verified(devS) is False
+assert sum(1 for c in devS.calls if c[0] == "swipe") == 4, devS.calls
+print("swipe_verified OK (qua video 1 lan; ket thi 3 fling + 1 keo cham roi bao loi)")
+
+# --- chan bam phan tu qua lon + chi bam nut dung vung
+devT = FakeDevice()
+devT._boxes["BIG"] = {"left": 0, "top": 0, "right": 1080, "bottom": 2400}
+assert pp._tap_human(devT, FakeEl(devT, "BIG")) is False
+assert not any(c[0] == "tap" for c in devT.calls), devT.calls
+assert pp._try_click(devT, ["Home"], timeout=1.0, region="bottom") is True
+devT2 = FakeDevice()
+devT2._boxes["Home"] = {"left": 100, "top": 1000, "right": 300, "bottom": 1200}
+assert pp._try_click(devT2, ["Home"], timeout=0.5, region="bottom") is False
+print("tap guards OK (phan tu to = khong bam; Home giua man hinh khong tinh la tab duoi)")
+
+# --- like chi sau khi qua video moi + log realtime tung video
+import io, contextlib
+devW = FakeDevice()
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    ld, liked = pp._watch_one(devW, 8, 0, idx=1)
+assert "video #1" in buf.getvalue(), buf.getvalue()
+devW2 = FakeDevice()
+devW2.stuck_video = True
+ld2, liked2 = pp._watch_one(devW2, 8, 0, idx=1)
+assert (ld2, liked2) == (0, False), (ld2, liked2)
+assert not any(c[0] == "double_click" for c in devW2.calls), devW2.calls
+print("watch_one OK (log realtime video #N; ket video thi khong like mu)")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

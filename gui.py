@@ -206,7 +206,7 @@ class Gui:
             messagebox.showerror("Thiếu file",
                                 f"Không tìm thấy file:\n{script}")
             return
-        cmd = [sys.executable, script] + args
+        cmd = [sys.executable, "-u", script] + args
         self.append_log(f"\n$ {' '.join(cmd)}\n")
         try:
             self.proc = subprocess.Popen(
@@ -225,8 +225,13 @@ class Gui:
         threading.Thread(target=self._reader, daemon=True).start()
 
     def _reader(self):
+        # readline() từng dòng thay vì lặp file (lặp file có thể đợi đầy
+        # buffer mới nhả dòng — log sẽ không realtime).
         try:
-            for line in self.proc.stdout:
+            while True:
+                line = self.proc.stdout.readline()
+                if not line:
+                    break
                 self.out_queue.put(line)
         except Exception:
             pass

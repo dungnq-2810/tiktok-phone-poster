@@ -195,6 +195,12 @@ nhiên 9–11 phút cho đỡ đều) rồi tự đổi acc, cuối phiên in t�
 acc. Acc nào đổi không được thì bỏ qua, nuôi tiếp acc khác. Ctrl+C dừng
 cả phiên (vẫn in tổng kết).
 
+Log realtime từng bước: mỗi video log 1 dòng (đang xem video #N ~Xs, đã
+qua video mới, like video #N) — nếu vuốt kẹt thì log báo rõ "vuốt 3 lần +
+kéo chậm vẫn không qua video mới" thay vì im lặng. Tool chỉ bấm nút đúng
+vị trí (Home/Profile ở thanh dưới, Search ở trên), phần tử nào to quá
+khung thì không bấm bừa, và chỉ like sau khi đã xác nhận qua video mới.
+
 Ngách đã config là master, không hỏi lại từ khóa mỗi lần chạy: mục 8
 giờ hỏi 2 pha — gán ngách từng acc, rồi hỏi từ khóa tìm kiếm cho từng
 ngách (lưu vào `niche_keywords.json`; gán nhanh 1 ngách bằng

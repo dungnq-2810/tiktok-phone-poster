@@ -47,7 +47,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-17"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-18"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -128,17 +128,27 @@ def _move_job(root: Path, job: dict, bucket: str, tag: str = ""):
 
 
 # ------------------------------------------------------------- UI helpers ----
-def _tap_human(d, el):
+def _tap_human(d, el, label=""):
     """Bấm vào một điểm ngẫu nhiên BÊN TRONG khung phần tử (né bấm đúng tâm
-    như máy — TikTok chấm điểm hành vi bấm trúng y hệt một tọa độ mỗi lần)."""
+    như máy — TikTok chấm điểm hành vi bấm trúng y hệt một tọa độ mỗi lần).
+    KHÔNG bấm phần tử quá lớn (>40% màn hình): đó là container/caption chứ
+    không phải nút — bấm bừa vào đó là đúng bệnh 'ấn lung tung' (dính
+    hashtag/mention trong caption rồi mở trang linh tinh)."""
     try:
         b = el.info.get("bounds") or {}
         l, t, r, btm = b["left"], b["top"], b["right"], b["bottom"]
         if r - l < 8 or btm - t < 8:
             raise ValueError("bounds quá nhỏ")
+        w, h = d.window_size()
+        if (r - l) * (btm - t) > 0.40 * w * h:
+            log(f"   (bỏ qua phần tử quá lớn {r - l}x{btm - t} — không bấm bừa)")
+            return False
         mx, my = max(3, (r - l) // 5), max(3, (btm - t) // 5)
-        d.click(random.randint(l + mx, r - mx),
-                random.randint(t + my, btm - my))
+        x = random.randint(l + mx, r - mx)
+        y = random.randint(t + my, btm - my)
+        d.click(x, y)
+        if label:
+            log(f"   bấm {label} @({x},{y}) [{r - l}x{btm - t}]")
         return True
     except Exception:
         try:
@@ -148,20 +158,68 @@ def _tap_human(d, el):
             return False
 
 
-def _try_click(d, variants, timeout=6.0, exact_first=True):
-    """Bấm phần tử theo text/description trong danh sách biến thể. True nếu bấm được."""
+def _matches(d, kwargs):
+    """Yield mọi phần tử khớp selector: trên uiautomator2 thật thì duyệt
+    theo chỉ số (để bỏ qua caption trùng chữ mà lấy đúng nút); trên thiết
+    bị giả (không hỗ trợ duyệt) thì chỉ yield phần tử duy nhất."""
+    base = d(**kwargs)
+    try:
+        n = base.count
+    except Exception:
+        yield base
+        return
+    for i in range(n):
+        try:
+            yield base[i]
+        except Exception:
+            continue
+
+
+def _in_region(bounds, region, w, h):
+    """Phần tử có nằm đúng vùng không: nút Home/Profile ở thanh dưới,
+    nút Search ở trên. Không có region thì chấp nhận mọi vị trí."""
+    if not region or not bounds:
+        return True
+    try:
+        cy = (bounds["top"] + bounds["bottom"]) / 2
+    except Exception:
+        return True
+    if region == "bottom":
+        return cy > 0.85 * h
+    if region == "top":
+        return cy < 0.15 * h
+    return True
+
+
+def _try_click(d, variants, timeout=6.0, exact_first=True, region=None):
+    """Bấm phần tử theo text/description trong danh sách biến thể. True nếu
+    bấm được. 2 lượt: lượt 1 chỉ khớp CHÍNH XÁC (tránh caption chứa chữ
+    trùng — vd caption 'link in profile' không được tính là nút Profile);
+    lượt 2 mới dùng Contains. Có region thì chỉ bấm phần tử đúng vùng."""
+    w, h = d.window_size()
+    passes = (("text", "description"), ("textContains", "descriptionContains"))
+    if not exact_first:
+        passes = (passes[1], passes[0])
     deadline = time.time() + timeout
     while time.time() < deadline:
-        for v in variants:
-            for kwargs in ({"text": v}, {"description": v},
-                           {"textContains": v}, {"descriptionContains": v}):
-                try:
-                    el = d(**kwargs)
-                    if el.exists(timeout=0.3):
-                        if _tap_human(d, el):
-                            return True
-                except Exception:
-                    continue
+        for keyset in passes:
+            for v in variants:
+                for key in keyset:
+                    kwargs = {key: v}
+                    try:
+                        for el in _matches(d, kwargs):
+                            if not el.exists(timeout=0.3):
+                                continue
+                            try:
+                                bounds = (el.info or {}).get("bounds")
+                            except Exception:
+                                bounds = None
+                            if not _in_region(bounds, region, w, h):
+                                continue
+                            if _tap_human(d, el, label=f"'{v}'"):
+                                return True
+                    except Exception:
+                        continue
         time.sleep(0.5)
     return False
 
@@ -479,7 +537,7 @@ def _handles_on_screen(d):
 
 def _goto_profile(d):
     """Mở tab Hồ sơ (Profile) ở thanh điều hướng dưới."""
-    if _try_click(d, TXT_PROFILE, timeout=4.0):
+    if _try_click(d, TXT_PROFILE, timeout=4.0, region="bottom"):
         jitter(1.5, 2.5)
         return
     w, h = d.window_size()
@@ -809,11 +867,14 @@ def ensure_account(d, target):
 
 
 # -------------------------------------------------------------- nurture ----
-def _watch_one(d, like_cap, likes_done):
-    """Xem 1 video như người thật rồi vuốt lên: xem đủ lâu (phần lớn
-    15-45s là hết video ngắn, thỉnh thoảng xem dài 45-120s), thỉnh thoảng
-    like bằng double-tap (tối đa like_cap/phiên), rồi vuốt với vị trí và
-    tốc độ ngẫu nhiên. Trả (likes_done mới, có like video này không)."""
+def _watch_one(d, like_cap, likes_done, idx=0):
+    """Xem 1 video như người thật rồi vuốt lên, LOG REALTIME từng bước để
+    người ngồi xem log thấy action liên tục (trước đây chỉ log mỗi 10
+    video nên giữa các lần dwell 15-120s log im lặng, nhìn như treo):
+    xem đủ lâu (phần lớn 15-45s là hết video ngắn, thỉnh thoảng xem dài
+    45-120s), vuốt lên có kiểm chứng, rồi CHỈ like khi đã xác nhận qua
+    video mới (trước đây like bấm mù vào màn hình cũ — 1 nguồn 'ấn lung
+    tung'). Trả (likes_done mới, có like video này không)."""
     w, h = d.window_size()
     r = random.random()
     if r < 0.6:
@@ -822,17 +883,23 @@ def _watch_one(d, like_cap, likes_done):
         dwell = random.uniform(45.0, 75.0)
     else:
         dwell = random.uniform(75.0, 120.0)
+    log(f"   ▶ video #{idx}: xem ~{dwell:.0f}s")
     time.sleep(dwell)
+    advanced = _swipe_next_verified(d)
+    if advanced:
+        log(f"   ↑ đã qua video mới")
+    else:
+        log(f"   ⚠️ kẹt ở video cũ — bỏ qua like video này")
     liked = False
-    if likes_done < like_cap and random.random() < 0.20:
+    if advanced and likes_done < like_cap and random.random() < 0.20:
         try:
             d.double_click(w // 2, h // 2)
         except Exception:
             pass
         likes_done += 1
         liked = True
+        log(f"   ♥ like video #{idx}")
         jitter(0.5, 1.5)
-    _swipe_next(d)
     jitter(0.5, 1.5)
     return likes_done, liked
 
@@ -842,7 +909,7 @@ def _nurture_search(d, keyword, like_cap, likes_done, watched, per_keyword=6):
     lại. Mở không được (giao diện khác bản) thì trả (..., False) để phiên
     chính vẫn nuôi bằng FYP — 1 bước phụ không được crash cả phiên."""
     try:
-        if not _try_click(d, TXT_SEARCH, timeout=3.0):
+        if not _try_click(d, TXT_SEARCH, timeout=3.0, region="top"):
             log("   (không mở được ô tìm kiếm trên giao diện này — bỏ qua, nuôi bằng FYP)")
             return watched, likes_done, False
         jitter(1.0, 2.0)
@@ -855,7 +922,8 @@ def _nurture_search(d, keyword, like_cap, likes_done, watched, per_keyword=6):
         d.press("enter")
         jitter(2.0, 3.5)
         for _ in range(per_keyword):
-            likes_done, _ = _watch_one(d, like_cap, likes_done)
+            likes_done, _ = _watch_one(d, like_cap, likes_done,
+                                       idx=watched + 1)
             watched += 1
         d.press("back")
         jitter(1.0, 2.0)
@@ -884,7 +952,7 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
     log(f"→ Bắt đầu nuôi tự động ~{budget / 60:.0f} phút: xem hết video rồi "
         f"lướt, like tối đa {like_cap}/phiên, không comment/follow tự động.")
     _open_tiktok(d)
-    _try_click(d, TXT_HOME, timeout=3.0)
+    _try_click(d, TXT_HOME, timeout=3.0, region="bottom")
     jitter(2.0, 3.0)
     watched = 0
     likes_done = 0
@@ -899,10 +967,9 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
             watched, likes_done, _ = _nurture_search(
                 d, kw, like_cap, likes_done, watched)
         while time.time() < end:
-            likes_done, _ = _watch_one(d, like_cap, likes_done)
+            likes_done, _ = _watch_one(d, like_cap, likes_done,
+                                       idx=watched + 1)
             watched += 1
-            if watched % 10 == 0:
-                log(f"   ... đã xem {watched} video, like {likes_done}")
     except KeyboardInterrupt:
         interrupted = True
         log("   (đã dừng nuôi bằng Ctrl+C)")
@@ -997,6 +1064,46 @@ def _swipe_next(d):
             random.uniform(0.15, 0.35))
 
 
+def _screen_sig(d):
+    """Dấu hiệu màn hình hiện tại (hash cây UI): đổi video thì caption/
+    tác giả/lượt like đổi theo nên hash đổi. Không đọc được thì None."""
+    for fn in ("dump", "dump_hierarchy"):
+        try:
+            s = getattr(d, fn)()
+            if s:
+                return hash(s)
+        except Exception:
+            continue
+    return None
+
+
+def _swipe_next_verified(d, tries=3):
+    """Vuốt lên và KIỂM CHỨNG đã qua video mới (so hash cây UI trước/sau).
+    Vuốt không qua thì thử lại kiểu khác, cuối cùng thử kéo chậm dài;
+    vẫn không qua thì trả False để caller biết mà không like mù lên màn
+    hình cũ — và log báo rõ thay vì im lặng kẹt 1 video như trước."""
+    before = _screen_sig(d)
+    for attempt in range(1, tries + 1):
+        _swipe_next(d)
+        jitter(2.0, 3.0)
+        after = _screen_sig(d)
+        if before is None or after is None or after != before:
+            return True
+        log(f"   vuốt lần {attempt} chưa qua video — thử lại kiểu khác")
+    w, h = d.window_size()
+    x = int(w * 0.5)
+    try:
+        d.swipe(x, int(h * 0.75), x, int(h * 0.25), 0.9)  # kéo chậm dài
+    except Exception:
+        pass
+    jitter(2.0, 3.0)
+    after = _screen_sig(d)
+    if before is None or after is None or after != before:
+        return True
+    log("   ⚠️ vuốt 3 lần + kéo chậm vẫn không qua video mới")
+    return False
+
+
 def warmup_feed(d, min_s=60, max_s=120, swipes=None):
     """Lướt feed như người thật trước khi đăng: xem mỗi video vài giây rồi
     vuốt lên. Chạy 1 lần mỗi lần chạy tool (không phải mỗi video).
@@ -1006,7 +1113,7 @@ def warmup_feed(d, min_s=60, max_s=120, swipes=None):
     else:
         secs = 0
     log(f"→ Khởi động phiên: lướt feed ~{int(secs)}s cho giống người thật")
-    _try_click(d, TXT_HOME, timeout=3.0)
+    _try_click(d, TXT_HOME, timeout=3.0, region="bottom")
     jitter(2.0, 3.0)
     w, h = d.window_size()
     end = time.time() + secs
