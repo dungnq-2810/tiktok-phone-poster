@@ -10,8 +10,19 @@ Ghép cặp video/caption: video `x.mp4` lấy caption từ `x.txt` hoặc
 của clipgen (mỗi story một folder con chứa video + caption) là chạy luôn.
 
     python phone_poster.py --init            # cài agent lên điện thoại (USB, 1 lần)
+    python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app
+    python phone_poster.py --switch-to username   # đổi sang acc khác (đã đăng nhập sẵn) để test
     python phone_poster.py --dir D:\\outbox --dry-run   # chạy thử, dừng trước nút Đăng
     python phone_poster.py --dir D:\\outbox             # đăng thật
+    python phone_poster.py --dir D:\\outbox --account username  # đăng, bắt buộc đúng acc này:
+                                             # tool tự đổi acc + kiểm tra trước mỗi lần đăng
+    # Test 2 mảng trên 2 acc: mỗi acc một thư mục con + nhãn riêng
+    python phone_poster.py --dir D:\\outbox\\irl --account-tag irl
+    python phone_poster.py --dir D:\\outbox\\court --account-tag court
+
+Né phát hiện tự động hóa: bấm vào điểm ngẫu nhiên trong nút (không bấm đúng
+tâm), gõ caption từng cụm ký tự như tay người (không dán), và lướt feed 1–2
+phút trước khi đăng. Tắt lướt feed bằng --no-warmup khi cần.
 
 Việc đăng chỉ thực sự kiểm chứng được trên máy + điện thoại của bạn:
 giao diện TikTok thay đổi theo phiên bản app, nên lần đầu hãy chạy
@@ -46,6 +57,13 @@ TXT_DISMISS = ["Not now", "Để sau", "Skip", "Bỏ qua", "Later", "Lúc khác"
                "Allow", "Cho phép", "OK"]
 TXT_UPLOAD_ERROR = ["Couldn't upload", "Không thể tải lên", "Upload failed",
                     "Tải lên thất bại", "Try again", "Thử lại"]
+TXT_HOME = ["Home", "Trang chủ"]
+TXT_PROFILE = ["Profile", "Hồ sơ"]
+TXT_ADD_ACCOUNT = ["Add account", "Thêm tài khoản"]
+TXT_VERIFY_BLOCK = ["Verify your identity", "Enter the code sent",
+                    "Xác minh danh tính", "Nhập mã xác minh",
+                    "unusual activity", "Hoạt động bất thường"]
+TXT_LOGIN = ["Log in", "Đăng nhập", "Sign up", "Đăng ký"]
 
 
 class JobError(Exception):
@@ -93,8 +111,8 @@ def find_jobs(root: Path):
     return jobs
 
 
-def _move_job(root: Path, job: dict, bucket: str):
-    dest_dir = root / bucket
+def _move_job(root: Path, job: dict, bucket: str, tag: str = ""):
+    dest_dir = root / (f"{bucket}-{tag}" if tag else bucket)
     dest_dir.mkdir(exist_ok=True)
     for f in (job["video"], job["caption_file"]):
         if f is not None and f.exists():
@@ -102,6 +120,26 @@ def _move_job(root: Path, job: dict, bucket: str):
 
 
 # ------------------------------------------------------------- UI helpers ----
+def _tap_human(d, el):
+    """Bấm vào một điểm ngẫu nhiên BÊN TRONG khung phần tử (né bấm đúng tâm
+    như máy — TikTok chấm điểm hành vi bấm trúng y hệt một tọa độ mỗi lần)."""
+    try:
+        b = el.info.get("bounds") or {}
+        l, t, r, btm = b["left"], b["top"], b["right"], b["bottom"]
+        if r - l < 8 or btm - t < 8:
+            raise ValueError("bounds quá nhỏ")
+        mx, my = max(3, (r - l) // 5), max(3, (btm - t) // 5)
+        d.click(random.randint(l + mx, r - mx),
+                random.randint(t + my, btm - my))
+        return True
+    except Exception:
+        try:
+            el.click()  # dự phòng khi không đọc được bounds
+            return True
+        except Exception:
+            return False
+
+
 def _try_click(d, variants, timeout=6.0, exact_first=True):
     """Bấm phần tử theo text/description trong danh sách biến thể. True nếu bấm được."""
     deadline = time.time() + timeout
@@ -112,8 +150,8 @@ def _try_click(d, variants, timeout=6.0, exact_first=True):
                 try:
                     el = d(**kwargs)
                     if el.exists(timeout=0.3):
-                        el.click()
-                        return True
+                        if _tap_human(d, el):
+                            return True
                 except Exception:
                     continue
         time.sleep(0.5)
@@ -145,6 +183,21 @@ def _dump_debug(d, root: Path, stem: str):
     return out
 
 
+def _open_tiktok(d):
+    """Mở app TikTok (nếu chưa mở) và dẹp popup cho phép/thông báo nếu có."""
+    d.screen_on()
+    try:
+        d.unlock()
+    except Exception:
+        pass
+    d.app_start(TIKTOK_PKG, stop=False)
+    jitter(3.0, 5.0)
+    for _ in range(3):
+        if not _try_click(d, TXT_DISMISS, timeout=0.8):
+            break
+        jitter(0.8, 1.5)
+
+
 def _click_first_gallery_item(d):
     """Bấm ô video đầu tiên (mới nhất) trong lưới chọn video của TikTok."""
     w, h = d.window_size()
@@ -168,14 +221,238 @@ def _click_first_gallery_item(d):
                 if best is None or key < best[0]:
                     best = (key, (x1 + x2) // 2, (y1 + y2) // 2)
     if best is not None:
-        d.click(best[1], best[2])
+        jx, jy = random.randint(-8, 8), random.randint(-8, 8)
+        d.click(best[1] + jx, best[2] + jy)
         return True
     # Dự phòng: vị trí tương đối của ô đầu tiên trong lưới
-    d.click(int(w * 0.17), int(h * 0.32))
+    d.click(int(w * 0.17) + random.randint(-10, 10),
+            int(h * 0.32) + random.randint(-10, 10))
     return True
 
 
+# ------------------------------------------------------------- accounts ----
+HANDLE_RE = re.compile(r"@([A-Za-z0-9._]{2,30})")
+
+
+def _norm_user(u):
+    return (u or "").strip().lstrip("@").lower()
+
+
+def _parse_nodes(d):
+    try:
+        return ET.fromstring(d.dump_hierarchy())
+    except Exception:
+        return None
+
+
+def _node_bounds(node):
+    m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.get("bounds", ""))
+    if not m:
+        return None
+    return tuple(map(int, m.groups()))
+
+
+def _handles_on_screen(d):
+    """Mọi @username đang hiện trên màn hình: list (handle, y phía trên),
+    sắp xếp từ trên xuống dưới."""
+    root_el = _parse_nodes(d)
+    found = []
+    if root_el is None:
+        return found
+    for node in root_el.iter("node"):
+        for attr in ("text", "content-desc"):
+            m = HANDLE_RE.search(node.get(attr) or "")
+            if m:
+                b = _node_bounds(node)
+                found.append((m.group(1).lower(), b[1] if b else 0))
+                break
+    found.sort(key=lambda t: t[1])
+    return found
+
+
+def _goto_profile(d):
+    """Mở tab Hồ sơ (Profile) ở thanh điều hướng dưới."""
+    if _try_click(d, TXT_PROFILE, timeout=4.0):
+        jitter(1.5, 2.5)
+        return
+    w, h = d.window_size()
+    d.click(int(w * 0.90), int(h * 0.94))  # dự phòng: tab cuối bên phải = Hồ sơ
+    jitter(1.5, 2.5)
+
+
+def current_account(d):
+    """@username của acc đang đăng nhập (đọc ở trang Hồ sơ của chính acc đó —
+    @username nằm cao nhất trên màn hình). JobError nếu chưa đăng nhập."""
+    _goto_profile(d)
+    handles = _handles_on_screen(d)
+    if handles:
+        return handles[0][0]
+    if _exists(d, TXT_LOGIN):
+        raise JobError("TikTok đang ở trạng thái CHƯA đăng nhập acc nào")
+    raise JobError("không đọc được @username ở trang Hồ sơ")
+
+
+def _switcher_open(d):
+    handles = {h for h, _y in _handles_on_screen(d)}
+    return len(handles) >= 2 or _exists(d, TXT_ADD_ACCOUNT)
+
+
+def _open_switcher(d):
+    """Mở bảng chuyển tài khoản từ trang Hồ sơ: chạm vào tên hiển thị ở thanh
+    trên cùng (có mũi tên xổ xuống). Dự phòng: nhấn giữ tab Hồ sơ."""
+    _goto_profile(d)
+    if _switcher_open(d):
+        return True
+    w, h = d.window_size()
+    root_el = _parse_nodes(d)
+    name, best_w = None, -1
+    if root_el is not None:
+        for node in root_el.iter("node"):
+            text = (node.get("text") or "").strip()
+            if not text or text.startswith("@"):
+                continue
+            b = _node_bounds(node)
+            if not b:
+                continue
+            cx = (b[0] + b[2]) / 2
+            if b[1] < 0.14 * h and 0.25 * w < cx < 0.75 * w and (b[2] - b[0]) > best_w:
+                best_w, name = b[2] - b[0], text
+    if name:
+        try:
+            el = d(text=name)
+            if el.exists(timeout=0.5) and _tap_human(d, el):
+                jitter(1.5, 2.5)
+                if _switcher_open(d):
+                    return True
+        except Exception:
+            pass
+    for kwargs in ({"description": "Profile"}, {"text": "Profile"},
+                   {"description": "Hồ sơ"}, {"text": "Hồ sơ"}):
+        try:
+            el = d(**kwargs)
+            if el.exists(timeout=0.3):
+                el.long_click()
+                jitter(1.5, 2.5)
+                if _switcher_open(d):
+                    return True
+                break
+        except Exception:
+            continue
+    return _switcher_open(d)
+
+
+def list_logged_in_accounts(d):
+    """Trả về (acc đang mở, [mọi acc đã đăng nhập trong app, theo thứ tự
+    trong bảng chuyển tài khoản])."""
+    _open_tiktok(d)
+    current = current_account(d)
+    if not _open_switcher(d):
+        return current, [current]
+    handles = []
+    for handle, _y in _handles_on_screen(d):
+        if handle not in handles:
+            handles.append(handle)
+    try:
+        d.press("back")
+    except Exception:
+        pass
+    jitter(0.8, 1.5)
+    return current, handles or [current]
+
+
+def switch_account(d, target):
+    """Đổi sang acc @target (phải đã đăng nhập sẵn trong app) rồi đọc lại
+    trang Hồ sơ để XÁC NHẬN acc hiện tại đúng là @target mới trả về."""
+    target = _norm_user(target)
+    if not target:
+        raise JobError("chưa cho biết acc cần đổi sang")
+    _open_tiktok(d)
+    cur = current_account(d)
+    if cur == target:
+        log(f"→ Acc đang mở đã là @{target} — không cần đổi.")
+        return cur
+    log(f"→ Đổi acc: @{cur} → @{target}")
+    if not _open_switcher(d):
+        raise JobError("không mở được bảng chuyển tài khoản của TikTok")
+    tapped = False
+    for kwargs in ({"text": f"@{target}"}, {"textContains": target},
+                   {"descriptionContains": target}):
+        try:
+            el = d(**kwargs)
+            if el.exists(timeout=0.5):
+                tapped = _tap_human(d, el)
+                if tapped:
+                    break
+        except Exception:
+            continue
+    if not tapped:
+        raise JobError(f"không thấy acc @{target} trong danh sách đã đăng nhập")
+    jitter(3.0, 5.0)
+    if _exists(d, TXT_VERIFY_BLOCK):
+        raise JobError("TikTok yêu cầu XÁC MINH khi đổi acc — mở điện thoại xử lý "
+                       "tay (nhập mã / bấm xác nhận) rồi chạy lại")
+    cur2 = current_account(d)
+    if cur2 != target:
+        raise JobError(f"đổi acc chưa thành công: đang ở @{cur2}, cần @{target}")
+    log(f"✅ Đã đổi sang acc @{target} (đã xác nhận ở trang Hồ sơ).")
+    return cur2
+
+
+def ensure_account(d, target):
+    """Đảm bảo acc đang mở đúng @target: đúng thì thôi, sai thì tự đổi."""
+    target = _norm_user(target)
+    cur = current_account(d)
+    if cur == target:
+        return cur
+    log(f"→ Acc đang mở là @{cur}, cần @{target} — tự đổi...")
+    return switch_account(d, target)
+
+
 # -------------------------------------------------------------- one post ----
+def _type_human(d, field, text):
+    """Gõ caption từng cụm 2–6 ký tự với nhịp ngẫu nhiên — giống tay người gõ,
+    thay vì dán (paste) một phát cả đoạn như bản cũ."""
+    field.click()
+    jitter(0.5, 1.2)
+    try:
+        i = 0
+        while i < len(text):
+            n = random.randint(2, 6)
+            d.send_keys(text[i:i + n])
+            i += n
+            time.sleep(random.uniform(0.04, 0.22))
+    except Exception:
+        field.set_text(text)  # dự phòng: máy nào không gõ được thì dán
+
+
+def warmup_feed(d, min_s=60, max_s=120, swipes=None):
+    """Lướt feed như người thật trước khi đăng: xem mỗi video vài giây rồi
+    vuốt lên. Chạy 1 lần mỗi lần chạy tool (không phải mỗi video).
+    `swipes=N` để test: vuốt đúng N lần thay vì tính theo thời gian."""
+    if swipes is None:
+        secs = random.uniform(min_s, max_s)
+    else:
+        secs = 0
+    log(f"→ Khởi động phiên: lướt feed ~{int(secs)}s cho giống người thật")
+    _try_click(d, TXT_HOME, timeout=3.0)
+    jitter(2.0, 3.0)
+    w, h = d.window_size()
+    end = time.time() + secs
+    n = 0
+    while True:
+        if swipes is not None:
+            if n >= swipes:
+                break
+        elif time.time() >= end:
+            break
+        n += 1
+        time.sleep(random.uniform(5.0, 11.0))  # xem video vài giây như người thật
+        x = int(w * random.uniform(0.40, 0.60))
+        d.swipe(x, int(h * 0.72), x + random.randint(-15, 15),
+                int(h * 0.28), random.uniform(0.3, 0.6))
+        jitter(0.5, 1.5)
+
+
 def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     video: Path = job["video"]
     caption: str = job["caption"]
@@ -191,22 +468,13 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
              "-d", f"file://{remote}"])
     jitter(2.0, 3.5)
 
-    d.screen_on()
-    try:
-        d.unlock()
-    except Exception:
-        pass
-    d.app_start(TIKTOK_PKG, stop=False)
-    jitter(3.0, 5.0)
-    for _ in range(3):  # dẹp popup cho phép/thông báo nếu có
-        if not _try_click(d, TXT_DISMISS, timeout=0.8):
-            break
-        jitter(0.8, 1.5)
+    _open_tiktok(d)
 
     log("→ Mở màn hình tạo video")
     if not _try_click(d, TXT_CREATE, timeout=5.0):
         w, h = d.window_size()
-        d.click(w // 2, int(h * 0.93))  # nút + ở giữa thanh dưới
+        d.click(w // 2 + random.randint(-12, 12),
+                int(h * 0.93) + random.randint(-8, 8))  # nút + ở giữa thanh dưới
         jitter()
     if not _try_click(d, TXT_UPLOAD, timeout=8.0):
         raise JobError("không thấy nút Tải lên (Upload) trong màn hình tạo video")
@@ -234,12 +502,7 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
             field = edits
     if field is None:
         raise JobError("không thấy ô nhập mô tả/caption")
-    field.click()
-    jitter()
-    try:
-        field.set_text(caption)
-    except Exception:
-        d.send_keys(caption, clear=True)
+    _type_human(d, field, caption)
     jitter()
 
     if dry_run:
@@ -290,11 +553,47 @@ def main():
     ap.add_argument("--gap-max", type=int, default=540, help="nghỉ tối đa giữa 2 lần đăng (giây)")
     ap.add_argument("--dry-run", action="store_true", help="làm mọi bước nhưng KHÔNG bấm Đăng")
     ap.add_argument("--keep-on-phone", action="store_true", help="giữ video trên điện thoại sau khi đăng")
+    ap.add_argument("--no-warmup", action="store_true",
+                    help="bỏ qua bước lướt feed khởi động trước khi đăng")
+    ap.add_argument("--warmup-min", type=int, default=60, help="lướt feed tối thiểu (giây)")
+    ap.add_argument("--warmup-max", type=int, default=120, help="lướt feed tối đa (giây)")
+    ap.add_argument("--account-tag", default="",
+                    help="nhãn acc cho lần chạy này (vd: irl, court) — file xong/lỗi "
+                         "sẽ vào _done-<tag>/_failed-<tag> riêng, khỏi lẫn 2 mảng test")
+    ap.add_argument("--account", default="",
+                    help="@username acc PHẢI đăng cho lần chạy này: tool kiểm tra acc "
+                         "đang mở trước mỗi lần đăng, sai thì TỰ ĐỔI, đổi không được "
+                         "thì DỪNG không đăng (khác --account-tag: đó chỉ là nhãn thư mục)")
+    ap.add_argument("--list-accounts", action="store_true",
+                    help="mở TikTok, liệt kê các acc đã đăng nhập trong app rồi thoát")
+    ap.add_argument("--switch-to", default="",
+                    help="đổi sang acc @username đã đăng nhập sẵn, xác nhận xong thì "
+                         "thoát (để test đổi acc)")
     ap.add_argument("--init", action="store_true", help="cài agent + kiểm tra kết nối rồi thoát")
     args = ap.parse_args()
 
     if args.init:
         run_init(args.serial)
+        return
+
+    if args.list_accounts or args.switch_to:
+        import uiautomator2 as u2
+        d = u2.connect(args.serial or "")
+        log(f"Đã kết nối điện thoại: {d.info.get('productName')}")
+        try:
+            if args.list_accounts:
+                current, accounts = list_logged_in_accounts(d)
+                log(f"Tổng {len(accounts)} acc đã đăng nhập trong app TikTok:")
+                for a in accounts:
+                    mark = "  ← đang mở" if a == current else ""
+                    log(f"  • @{a}{mark}")
+            else:
+                now = switch_account(d, args.switch_to)
+                log(f"Xong: acc đang mở là @{now}")
+        except Exception as e:
+            where = _dump_debug(d, Path(args.dir).resolve(), "account")
+            log(f"❌ {e} — ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
+            sys.exit(1)
         return
 
     import uiautomator2 as u2
@@ -310,6 +609,20 @@ def main():
 
     d = u2.connect(args.serial or "")
     log(f"Đã kết nối điện thoại: {d.info.get('productName')}")
+    tag = args.account_tag.strip()
+    prefix = f"[{tag}] " if tag else ""
+
+    if args.account:
+        try:
+            ensure_account(d, args.account)
+        except Exception as e:
+            where = _dump_debug(d, root, "account")
+            log(f"❌ Không đảm bảo được đúng acc @{_norm_user(args.account)}: {e}")
+            log(f"   Ảnh chụp + cấu trúc màn hình ở {where} — DỪNG, chưa đăng gì.")
+            return
+
+    if not args.no_warmup:
+        warmup_feed(d, min_s=args.warmup_min, max_s=args.warmup_max)
 
     posted = failed = 0
     for i, job in enumerate(jobs):
@@ -317,18 +630,26 @@ def main():
             gap = random.randint(args.gap_min, args.gap_max)
             log(f"⏳ Nghỉ {gap}s cho giống người thật...")
             time.sleep(gap)
-        log(f"===== {i + 1}/{len(jobs)}: {job['video'].name} =====")
+        log(f"===== {prefix}{i + 1}/{len(jobs)}: {job['video'].name} =====")
+        if args.account:
+            try:
+                ensure_account(d, args.account)
+            except Exception as e:
+                where = _dump_debug(d, root, job["video"].stem)
+                log(f"❌ Sai acc trước khi đăng {job['video'].name}: {e} — DỪNG cả "
+                    f"lần chạy, video còn nguyên trong hàng đợi. Xem {where}")
+                return
         try:
             result = post_one(d, job, root, dry_run=args.dry_run,
                               keep_on_phone=args.keep_on_phone)
             if result == "posted":
                 posted += 1
-                _move_job(root, job, "_done")
+                _move_job(root, job, "_done", tag)
         except Exception as e:
             failed += 1
             where = _dump_debug(d, root, job["video"].stem)
             log(f"❌ Lỗi: {e} — ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
-            _move_job(root, job, "_failed")
+            _move_job(root, job, "_failed", tag)
             try:
                 d.app_start(TIKTOK_PKG, stop=False)
             except Exception:

@@ -27,14 +27,51 @@ echo  1. Cai agent len dien thoai (lam 1 lan, cam USB)
 echo  2. Test: mo TikTok + luot feed
 echo  3. Dang thu - dry-run (khong bam nut Dang)
 echo  4. Dang that (video trong thu muc outbox)
+echo  5. Xem cac acc da dang nhap trong TikTok
+echo  6. Doi acc thu (trong cac acc da dang nhap)
 echo  0. Thoat
 echo =============================================
 set /p "CH=Chon so roi bam Enter: "
-if "%CH%"=="1" "%PY%" phone_poster.py --init
-if "%CH%"=="2" "%PY%" test_open_scroll.py
-if "%CH%"=="3" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run
-if "%CH%"=="4" "%PY%" phone_poster.py --dir "%CD%\outbox"
+if "%CH%"=="1" goto M1
+if "%CH%"=="2" goto M2
+if "%CH%"=="3" goto M3
+if "%CH%"=="4" goto M4
+if "%CH%"=="5" goto M5
+if "%CH%"=="6" goto M6
 if "%CH%"=="0" goto END
+goto MENUDONE
+
+:M1
+"%PY%" phone_poster.py --init
+goto MENUDONE
+
+:M2
+"%PY%" test_open_scroll.py
+goto MENUDONE
+
+:M3
+set /p "ACC=Dang vao acc nao? (nhap username, de trong = acc dang mo): "
+if "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run
+if not "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --dry-run --account "%ACC%"
+goto MENUDONE
+
+:M4
+set /p "ACC=Dang vao acc nao? (nhap username, de trong = acc dang mo): "
+if "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox"
+if not "%ACC%"=="" "%PY%" phone_poster.py --dir "%CD%\outbox" --account "%ACC%"
+goto MENUDONE
+
+:M5
+"%PY%" phone_poster.py --list-accounts
+goto MENUDONE
+
+:M6
+set /p "ACC=Doi sang acc nao? (nhap username): "
+if "%ACC%"=="" goto MENUDONE
+"%PY%" phone_poster.py --switch-to "%ACC%"
+goto MENUDONE
+
+:MENUDONE
 echo.
 pause
 goto MENU
