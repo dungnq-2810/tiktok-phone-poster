@@ -134,13 +134,18 @@ hình + cấu trúc giao diện tại bước lỗi — gửi thư mục đó ch
 
 ## Điện thoại tắt màn hình / khóa màn hình
 
-Trước mỗi lần mở TikTok, tool tự đánh thức màn hình + vuốt mở khóa trượt,
-rồi **kiểm tra TikTok có đang ở foreground thật không** mới làm tiếp. Nếu
-không được, nó dừng ngay và báo rõ thay vì bấm mò trên màn hình khóa:
+Trước mỗi lần mở TikTok, tool tự đánh thức màn hình + vuốt mở khóa (cú vuốt
+mặc định của thư viện hay trượt trên màn Redmi nên có thêm cú vuốt dự phòng
+theo đúng kích thước màn hình máy), rồi **chờ tối đa 10s để TikTok lên
+foreground thật** mới làm tiếp — máy yếu khởi động lạnh lâu, check một phát
+là đọc trượt. Mỗi lần thử đều in trạng thái quan sát được (màn hình bật/tắt,
+app nào đang trước mặt). Nếu không được, nó dừng ngay và báo rõ từng trường
+hợp thay vì bấm mò trên màn hình khóa:
 
-- Báo `KHÓA màn hình` → điện thoại đang khóa PIN/mẫu hình/vân tay: tool
-  không tự qua được loại khóa này. Mở khóa tay rồi chạy lại; khi test nên
-  tắt khóa màn hình cho khỏi kẹt.
+- Báo `kẹt ở MÀN HÌNH KHÓA` → vẫn ở màn hình khóa vuốt: "không có mật khẩu"
+  không có nghĩa là không có màn hình khóa — MIUI mặc định vẫn có màn hình
+  khóa vuốt. Mở khóa tay rồi chạy lại; khi test nên tắt hẳn màn hình khóa
+  cho khỏi kẹt. (Khóa PIN/mẫu hình/vân tay thì tool không tự qua được.)
 - Báo `không nói chuyện được với điện thoại` → cáp lỏng, chưa bật USB
   debugging, hoặc MIUI đã tắt app agent ATX chạy nền: chạy lại menu 1, rồi
   vào Cài đặt > Pin cho app ATX chọn "Không giới hạn" và khóa nó trong đa

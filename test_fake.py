@@ -51,7 +51,9 @@ class FakeDevice:
     def push(self, local, remote): self.pushed.append((local, remote))
     def screen_on(self): self.screen_on_flag = True
     def unlock(self):
-        if self.keyguard == "slide":
+        pass  # giả lập đúng máy thật: unlock() mặc định hay vuốt trượt
+    def _swipe_unlock(self, sy, ey):
+        if self.keyguard == "slide" and sy > ey:
             self.keyguard = "none"
     def app_start(self, pkg, stop=False):
         self.calls.append(("app_start", pkg))
@@ -72,7 +74,9 @@ class FakeDevice:
             if b["left"] <= x <= b["right"] and b["top"] <= y <= b["bottom"]:
                 self.el_click(key)
                 break
-    def swipe(self, sx, sy, ex, ey, dur=0.5): self.calls.append(("swipe", sx, sy, ex, ey))
+    def swipe(self, sx, sy, ex, ey, dur=0.5, duration=None):
+        self.calls.append(("swipe", sx, sy, ex, ey))
+        self._swipe_unlock(sy, ey)
     def screenshot(self, path): pathlib.Path(path).write_bytes(b"png")
     def send_keys(self, t, clear=False): self.captions.append(t)
     def press(self, key):
@@ -240,7 +244,7 @@ try:
     pp._open_tiktok(devP)
     raise AssertionError("khóa PIN mà vẫn mở được là sai")
 except pp.JobError as e:
-    assert "KHÓA màn hình" in str(e), e
+    assert "MÀN HÌNH KHÓA" in str(e), e
     print("_open_tiktok OK (khóa PIN -> báo rõ KHÓA màn hình, dừng thay vì bấm mò)")
 
 devP2 = FakeDevice()
@@ -249,7 +253,7 @@ try:
     pp.list_logged_in_accounts(devP2)
     raise AssertionError("khóa PIN mà vẫn lấy được acc là sai")
 except pp.JobError as e:
-    assert "KHÓA màn hình" in str(e), e
+    assert "MÀN HÌNH KHÓA" in str(e), e
     print("list_logged_in_accounts OK (điện thoại khóa -> lỗi rõ KHÓA màn hình, "
           "không còn lỗi mơ hồ 'không đọc được @username')")
 time.sleep = _real_sleep

@@ -186,15 +186,17 @@ def _dump_debug(d, root: Path, stem: str):
 def _open_tiktok(d):
     """Mở app TikTok và XÁC NHẬN nó đang ở foreground mới làm tiếp.
 
-    Bệnh cũ: chỉ gọi screen_on() + unlock() rồi làm tiếp mà không kiểm tra.
-    unlock() chỉ qua được khóa TRƯỢT — điện thoại khóa PIN/mẫu hình/vân tay
-    thì app_start chạy sau màn hình khóa, các bước sau bấm mò trên màn hình
-    khóa rồi mới lỗi khó hiểu ở cuối (không đọc được acc, không thấy nút...).
-    Giờ: thử tối đa 3 lần (đánh thức -> mở khóa trượt -> mở app -> kiểm tra
-    app đang foreground thật), không được thì báo rõ nguyên nhân và dừng.
+    Hai bệnh đã gặp trên Redmi: (1) 'không có mật khẩu' không có nghĩa là
+    không có màn hình khóa — MIUI mặc định vẫn có màn hình khóa VUỐT, và cú
+    vuốt mặc định của unlock() hay trượt trên màn 720x1520; (2) máy yếu khởi
+    động lạnh TikTok lâu hơn 2–3s nên check một phát đọc trượt.
+    Giờ mỗi lần thử: đánh thức -> unlock() -> vuốt mở khóa dự phòng theo đúng
+    kích thước màn hình -> mở app -> chờ tối đa 10s để app lên foreground
+    thật. Không được thì báo rõ từng trường hợp (tắt màn / kẹt màn khóa /
+    đang ở app khác) kèm trạng thái quan sát được, thay vì một lỗi chung.
     """
     last_pkg, last_screen_on = "", True
-    for _ in range(3):
+    for attempt in range(3):
         try:
             d.screen_on()
         except Exception:
@@ -204,32 +206,46 @@ def _open_tiktok(d):
             d.unlock()
         except Exception:
             pass
+        try:  # vuốt mở khóa dự phòng (khóa trượt MIUI) theo đúng màn hình máy
+            w, h = d.window_size()
+            d.swipe(w // 2, int(h * 0.85), w // 2, int(h * 0.25), duration=0.5)
+        except Exception:
+            pass
         try:
             d.app_start(TIKTOK_PKG, stop=False)
         except Exception:
             pass
-        jitter(2.0, 3.0)
-        try:
-            info = d.info or {}
-        except Exception:
-            info = {}
-        last_pkg = info.get("currentPackageName") or ""
-        last_screen_on = info.get("screenOn", True)
+        for _ in range(10):  # chờ app lên foreground (máy yếu khởi động lạnh lâu)
+            try:
+                info = d.info or {}
+            except Exception:
+                info = {}
+            last_pkg = info.get("currentPackageName") or ""
+            last_screen_on = info.get("screenOn", True)
+            if last_screen_on and last_pkg == TIKTOK_PKG:
+                break
+            time.sleep(1.0)
         if last_screen_on and last_pkg == TIKTOK_PKG:
             break
-    if not last_screen_on or last_pkg != TIKTOK_PKG:
-        if (not last_screen_on or not last_pkg
-                or "systemui" in last_pkg or "keyguard" in last_pkg):
-            raise JobError("Điện thoại vẫn đang KHÓA màn hình (hoặc tắt màn "
-                           "hình) — tool chỉ tự mở được khóa trượt, KHÔNG qua "
-                           "được PIN/mẫu hình/vân tay. Mở khóa tay rồi chạy "
-                           "lại; khi test nên tắt khóa màn hình cho khỏi kẹt.")
-        raise JobError(f"TikTok chưa mở được (đang ở app {last_pkg}) — mở tay "
-                       "TikTok trên điện thoại rồi chạy lại.")
-    for _ in range(3):
-        if not _try_click(d, TXT_DISMISS, timeout=0.8):
-            break
-        jitter(0.8, 1.5)
+        log(f"  … lần thử {attempt + 1}: màn hình="
+            f"{'bật' if last_screen_on else 'TẮT'}, app trước mặt="
+            f"{last_pkg or '?'}")
+    if last_screen_on and last_pkg == TIKTOK_PKG:
+        for _ in range(3):
+            if not _try_click(d, TXT_DISMISS, timeout=0.8):
+                break
+            jitter(0.8, 1.5)
+        return
+    if not last_screen_on:
+        raise JobError("Điện thoại vẫn TẮT màn hình sau 3 lần đánh thức — bấm "
+                       "nút nguồn tay cho màn hình sáng rồi chạy lại.")
+    if not last_pkg or "systemui" in last_pkg or "keyguard" in last_pkg:
+        raise JobError("Điện thoại vẫn kẹt ở MÀN HÌNH KHÓA (vuốt chưa qua) — "
+                       "tool chỉ qua được khóa trượt, KHÔNG qua được PIN/mẫu "
+                       "hình/vân tay. Mở khóa tay rồi chạy lại; khi test nên "
+                       "tắt hẳn màn hình khóa cho khỏi kẹt.")
+    raise JobError(f"TikTok chưa lên foreground (đang ở app {last_pkg}) — mở "
+                   "tay TikTok trên điện thoại rồi chạy lại.")
 
 
 def _click_first_gallery_item(d):
