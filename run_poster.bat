@@ -41,6 +41,7 @@ echo  4. Dang that (video trong thu muc outbox)
 echo  5. Xem cac acc da dang nhap trong TikTok
 echo  6. Doi acc thu (trong cac acc da dang nhap)
 echo  7. Chuyen sang ADB qua Wi-Fi (rut cap duoc)
+echo  8. Config acc theo ngach (lay danh sach truoc)
 echo  0. Thoat
 echo =============================================
 set /p "CH=Chon so roi bam Enter: "
@@ -51,6 +52,7 @@ if "%CH%"=="4" goto M4
 if "%CH%"=="5" goto M5
 if "%CH%"=="6" goto M6
 if "%CH%"=="7" goto M7
+if "%CH%"=="8" goto M8
 if "%CH%"=="0" goto END
 goto MENUDONE
 
@@ -86,6 +88,10 @@ goto MENUDONE
 
 :M7
 "%PY%" phone_poster.py --wifi
+goto MENUDONE
+
+:M8
+"%PY%" phone_poster.py --config-niches
 goto MENUDONE
 
 :MENUDONE

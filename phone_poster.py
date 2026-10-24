@@ -11,7 +11,9 @@ của clipgen (mỗi story một folder con chứa video + caption) là chạy l
 
     python phone_poster.py --init            # cài agent lên điện thoại (USB, 1 lần)
     python phone_poster.py --wifi            # chuyển sang ADB qua Wi-Fi để rút cáp
-    python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app
+    python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app (+ ngách đã config)
+    python phone_poster.py --config-niches   # lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu vào accounts.json
+    python phone_poster.py --set-niche username B  # gán nhanh 1 acc vào ngách B
     python phone_poster.py --switch-to username   # đổi sang acc khác (đã đăng nhập sẵn) để test
     python phone_poster.py --dir D:\\outbox --dry-run   # chạy thử, dừng trước nút Đăng
     python phone_poster.py --dir D:\\outbox             # đăng thật
@@ -43,7 +45,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-10"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-11"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -289,6 +291,49 @@ HANDLE_RE = re.compile(r"@([A-Za-z0-9._]{2,30})")
 
 def _norm_user(u):
     return (u or "").strip().lstrip("@").lower()
+
+
+def _config_path():
+    """File config acc -> ngach. Mac dinh nam canh phone_poster.py (de
+    chay tu bat hay tu thu muc nao cung cung 1 file); test co the ghi de
+    qua bien moi truong PHONE_POSTER_CONFIG."""
+    override = os.environ.get("PHONE_POSTER_CONFIG")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent / "accounts.json"
+
+
+def load_niches():
+    """Doc mapping username (da chuan hoa) -> ten ngach. File khong co
+    hoac loi thi tra {} chu khong crash (config la tinh nang phu)."""
+    try:
+        data = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out = {}
+    for k, v in data.items():
+        if isinstance(v, str) and v.strip():
+            out[_norm_user(k)] = v.strip()
+    return out
+
+
+def save_niches(mapping):
+    _config_path().write_text(
+        json.dumps(mapping, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\n", encoding="utf-8")
+
+
+def tag_for_account(account, tag):
+    """Tag dung cho thu muc _done/_failed: --account-tag neu co; neu
+    khong thi lay ngach da config cho acc do (neu co)."""
+    tag = (tag or "").strip()
+    if tag:
+        return tag
+    if account:
+        return load_niches().get(_norm_user(account), "")
+    return ""
 
 
 def _parse_nodes(d):
@@ -902,6 +947,10 @@ def main():
     ap.add_argument("--init", action="store_true", help="cài agent + kiểm tra kết nối rồi thoát")
     ap.add_argument("--wifi", action="store_true",
                     help="chuyển điện thoại đang cắm USB sang ADB qua Wi-Fi để rút cáp")
+    ap.add_argument("--set-niche", nargs=2, metavar=("USER", "NGACH"),
+                    help="gán ngách cho 1 acc (vd: --set-niche sandracruzkay183 B)")
+    ap.add_argument("--config-niches", action="store_true",
+                    help="lấy danh sách acc trước, rồi hỏi ngách từng acc và lưu")
     args = ap.parse_args()
     log(f"TikTok Phone Poster, ban {VERSION}")
 
@@ -911,6 +960,55 @@ def main():
 
     if args.wifi:
         run_wifi()
+        return
+
+    if args.set_niche:
+        user, niche = args.set_niche
+        user = _norm_user(user)
+        niche = (niche or "").strip()
+        if not user or not niche:
+            log("❌ --set-niche cần username và tên ngách (vd: --set-niche sandracruzkay183 B).")
+            sys.exit(1)
+        mapping = load_niches()
+        mapping[user] = niche
+        save_niches(mapping)
+        log(f"✅ Đã config: @{user} -> ngách {niche}")
+        return
+
+    if args.config_niches:
+        try:
+            d = _connect(args.serial)
+        except JobError as e:
+            log(f"❌ {e}")
+            sys.exit(1)
+        try:
+            current, accounts = list_logged_in_accounts(
+                d, Path(args.dir).resolve())
+        except Exception as e:
+            where = _dump_debug(d, Path(args.dir).resolve(), "account")
+            log(f"❌ {e} — ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
+            sys.exit(1)
+        mapping = load_niches()
+        log(f"Tổng {len(accounts)} acc đã đăng nhập trong app TikTok (gán ngách từng acc, Enter = giữ nguyên):")
+        changed = False
+        for a in accounts:
+            cur = mapping.get(a, "")
+            try:
+                ans = input(f"  @{a} (hiện tại: {cur or 'chưa có'}) -> ngách nào? ").strip()
+            except EOFError:
+                ans = ""
+            if ans:
+                mapping[a] = ans
+                changed = True
+        stale = [u for u in mapping if u not in accounts]
+        if stale:
+            log("ℹ️ Các acc sau có trong config nhưng hiện không đăng nhập trong app "
+                f"(giữ nguyên, không xóa): {', '.join('@' + u for u in stale)}")
+        if changed:
+            save_niches(mapping)
+            log("✅ Đã lưu config ngách.")
+        else:
+            log("Không đổi gì.")
         return
 
     if args.list_accounts or args.switch_to:
@@ -923,10 +1021,13 @@ def main():
             if args.list_accounts:
                 current, accounts = list_logged_in_accounts(
                     d, Path(args.dir).resolve())
+                niches = load_niches()
                 log(f"Tổng {len(accounts)} acc đã đăng nhập trong app TikTok:")
                 for a in accounts:
                     mark = "  ← đang mở" if a == current else ""
-                    log(f"  • @{a}{mark}")
+                    n = niches.get(a)
+                    ntag = f" [ngách: {n}]" if n else " [chưa config ngách]"
+                    log(f"  • @{a}{mark}{ntag}")
             else:
                 now = switch_account(d, args.switch_to)
                 log(f"Xong: acc đang mở là @{now}")
@@ -951,7 +1052,10 @@ def main():
     except JobError as e:
         log(f"❌ {e} — chưa đăng gì.")
         return
-    tag = args.account_tag.strip()
+    tag = tag_for_account(args.account, args.account_tag)
+    if tag and not args.account_tag.strip() and args.account:
+        log(f"Acc @{_norm_user(args.account)} đã config ngách {tag} — "
+            f"file xong/lỗi sẽ vào _done-{tag}/_failed-{tag}.")
     prefix = f"[{tag}] " if tag else ""
 
     if args.account:

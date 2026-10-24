@@ -140,6 +140,23 @@ mạng, file sửa tay xung đột...) thì nó báo một dòng rồi vẫn ch�
 có, không dừng lại; file sửa tay của bạn không bị ghi đè (pull --ff-only
 không merge khi có xung đột).
 
+## Config acc theo ngách (lấy danh sách trước, rồi gán)
+
+Mở `run_poster.bat` → mục **8**: tool lấy danh sách acc đang đăng nhập
+trong app TikTok trước (giống mục 5), rồi hỏi ngách từng acc một — gõ tên
+ngách (vd `A`, `B`, `irl`, `dashcam`), Enter là giữ nguyên — xong lưu vào
+file `accounts.json` cạnh `phone_poster.py`. Gán nhanh 1 acc không cần vào
+menu: `phone_poster.py --set-niche sandracruzkay183 B`.
+
+Từ đó mục 5 hiển thị thêm ngách từng acc (`[ngách: A]` hoặc `[chưa config
+ngách]`), và khi đăng với `--account @user` mà không kèm `--account-tag`
+thì tool tự lấy ngách đã config làm nhãn thư mục (`_done-A`,
+`_failed-A`), khỏi gõ tay mỗi lần. `--account-tag` gõ tay vẫn thắng config.
+
+Lưu ý: config chỉ gán được cho acc đã đăng nhập trong app. Acc mua về chưa
+đăng nhập thì đăng nhập vào app trước, rồi chạy lại mục 8 là thấy nó trong
+danh sách.
+
 ## ADB qua Wi-Fi (rút cáp)
 
 Tool nói chuyện với điện thoại qua ADB nên rút cáp là mất kết nối, trừ khi

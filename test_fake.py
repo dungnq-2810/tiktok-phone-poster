@@ -285,5 +285,27 @@ devH = FakeDevice()
 devH.hide_handle = 2
 assert pp.current_account(devH) == "acc_one"
 print("current_account OK (header tải chậm -> chờ + kéo làm mới rồi mới đọc được)")
+
+# --- config acc -> ngach (ghi vao file tam, khong cham vao accounts.json that)
+import os, json
+cfg = tmp / "accounts-test.json"
+os.environ["PHONE_POSTER_CONFIG"] = str(cfg)
+assert pp.load_niches() == {}, pp.load_niches()
+pp.save_niches({"@Acc_One": "A", "acc_two": " B "})
+got = pp.load_niches()
+assert got == {"acc_one": "A", "acc_two": "B"}, got
+print("load/save_niches OK (chuan hoa username + cat khoang trang, file thieu -> {})")
+assert pp.tag_for_account("acc_one", "") == "A"
+assert pp.tag_for_account("acc_one", "rieng") == "rieng", "tag go tay phai thang config"
+assert pp.tag_for_account("chua-co", "") == ""
+assert pp.tag_for_account("", "") == ""
+print("tag_for_account OK (ngach tu config khi khong co tag, tag tay thang)")
+_old_argv = sys.argv
+sys.argv = ["phone_poster.py", "--set-niche", "@Acc_Two", "dashcam"]
+pp.main()
+sys.argv = _old_argv
+assert pp.load_niches()["acc_two"] == "dashcam", pp.load_niches()
+print("--set-niche OK (ghi qua main, khong can dien thoai)")
+del os.environ["PHONE_POSTER_CONFIG"]
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")
