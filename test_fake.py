@@ -36,6 +36,8 @@ class FakeDevice:
         self.keyguard = "none"
         self.current_pkg = ""
         self.one_account = False  # app chỉ đăng nhập 1 acc (sheet chỉ có acc_one)
+        self.hide_handle = 0      # số lần dump trang Hồ sơ đầu tiên chưa có @handle (giả lập header tải chậm)
+        self.profile_dumps = 0
         self._boxes = {}            # mỗi phần tử một khung tọa độ riêng (như máy thật)
     @property
     def info(self):
@@ -104,9 +106,12 @@ class FakeDevice:
                     '</hierarchy>')
         if self.on_profile:  # trang Hồ sơ: tên hiển thị trên cùng + @username
             name = "Acc One" if self.current == "acc_one" else "Acc Two"
+            self.profile_dumps += 1
+            handle_row = '' if self.profile_dumps <= self.hide_handle else \
+                f'<node text="@{self.current}" bounds="[440,480][640,540]"/>'
             return ('<hierarchy>'
                     f'<node text="{name}" bounds="[340,120][740,200]"/>'
-                    f'<node text="@{self.current}" bounds="[440,480][640,540]"/>'
+                    f'{handle_row}'
                     '</hierarchy>')
         return ('<hierarchy><node clickable="true" bounds="[0,300][360,660]" class="android.widget.FrameLayout"/>'
                 '<node clickable="true" bounds="[360,300][720,660]" class="android.widget.FrameLayout"/></hierarchy>')
@@ -271,5 +276,11 @@ dev1.one_account = True
 cur1, acc1 = pp.list_logged_in_accounts(dev1)
 assert cur1 == "acc_one" and acc1 == ["acc_one"], (cur1, acc1)
 print("list_logged_in_accounts OK (app chỉ có 1 acc -> trả đúng [acc đang dùng])")
+
+# header trang Hồ sơ tải chậm: 2 lần dump đầu chưa có @handle, lần 3 mới có
+devH = FakeDevice()
+devH.hide_handle = 2
+assert pp.current_account(devH) == "acc_one"
+print("current_account OK (header tải chậm -> chờ + kéo làm mới rồi mới đọc được)")
 time.sleep = _real_sleep
 print("ALL FAKE-DEVICE TESTS PASSED")

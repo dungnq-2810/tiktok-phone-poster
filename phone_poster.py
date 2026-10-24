@@ -42,7 +42,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-7"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-8"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -334,16 +334,35 @@ def _goto_profile(d):
 
 def current_account(d):
     """@username của acc đang đăng nhập (đọc ở trang Hồ sơ của chính acc đó —
-    @username nằm cao nhất trên màn hình). JobError nếu chưa đăng nhập."""
+    @username nằm cao nhất trên màn hình). JobError nếu chưa đăng nhập.
+
+    Header trang Hồ sơ (avatar, @handle, số liệu) tải chập chờn — có lần
+    dump ra không có lấy một node @handle nào (trang chưa tải xong, hay gặp
+    khi mạng/VPN chậm) nên đọc một phát là trượt oan. Giờ chờ tối đa ~12s,
+    giữa chừng kéo làm mới trang một lần và bấm lại tab Hồ sơ một lần, rồi
+    mới kết luận là không đọc được."""
     _open_tiktok(d)  # đảm bảo TikTok đang mở thật trước khi đọc (trước đây
     # ensure_account gọi thẳng vào đây khi app còn chưa mở, nên đọc trượt)
     _goto_profile(d)
-    handles = _handles_on_screen(d)
-    if handles:
-        return handles[0][0]
+    for attempt in range(12):
+        handles = _handles_on_screen(d)
+        if handles:
+            return handles[0][0]
+        if attempt == 4:
+            try:  # kéo xuống làm mới trang (header tải dở)
+                w, h = d.window_size()
+                d.swipe(w // 2, int(h * 0.30), w // 2, int(h * 0.60),
+                        duration=0.5)
+            except Exception:
+                pass
+        if attempt == 8:
+            _goto_profile(d)
+        time.sleep(1.0)
     if _exists(d, TXT_LOGIN):
         raise JobError("TikTok đang ở trạng thái CHƯA đăng nhập acc nào")
-    raise JobError("không đọc được @username ở trang Hồ sơ")
+    raise JobError("không đọc được @username ở trang Hồ sơ (header trang tải "
+                   "chưa xong sau ~12s — mạng/VPN chậm có thể gây ra, chạy "
+                   "lại thường là được)")
 
 
 TXT_SWITCHER = ["Switch account", "Switch accounts", "Chuyển tài khoản",
@@ -356,8 +375,37 @@ def _switcher_open(d):
             or _exists(d, TXT_SWITCHER))
 
 
-def _wait_switcher(d, timeout=3.0):
-    """Chờ bảng chuyển tài khoản hiện ra (sheet mở có độ trễ)."""
+def _switcher_button_center(d, name_bounds):
+    """Tâm của nút bấm thật chứa tên: trên bản TikTok này TextView tên
+    KHÔNG clickable, nút thật là LinearLayout cha bao quanh nó
+    (vd [244,55][488,159] chứa tên [244,85][488,129]). Trả về None nếu
+    không tìm được khung cha clickable nào thì dùng cách chạm cũ."""
+    if name_bounds is None:
+        return None
+    root_el = _parse_nodes(d)
+    if root_el is None:
+        return None
+    nx1, ny1, nx2, ny2 = name_bounds
+    best = None
+    for node in root_el.iter("node"):
+        if node.get("clickable") != "true":
+            continue
+        b = _node_bounds(node)
+        if not b:
+            continue
+        if b[0] <= nx1 and b[1] <= ny1 and b[2] >= nx2 and b[3] >= ny2:
+            area = (b[2] - b[0]) * (b[3] - b[1])
+            if best is None or area < best[0]:
+                best = (area, b)
+    if best is None:
+        return None
+    b = best[1]
+    return ((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
+
+
+def _wait_switcher(d, timeout=5.0):
+    """Chờ bảng chuyển tài khoản hiện ra (máy yếu + VPN chậm thì sheet mở
+    có độ trễ, chờ 3s là đọc trượt)."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         if _switcher_open(d):
@@ -378,7 +426,7 @@ def _open_switcher(d):
         return True
     w, h = d.window_size()
     root_el = _parse_nodes(d)
-    name, best_w = None, -1
+    name, name_bounds, best_w = None, None, -1
     if root_el is not None:
         for node in root_el.iter("node"):
             text = ((node.get("text") or "").strip()
@@ -390,7 +438,17 @@ def _open_switcher(d):
                 continue
             cx = (b[0] + b[2]) / 2
             if b[1] < 0.14 * h and 0.25 * w < cx < 0.75 * w and (b[2] - b[0]) > best_w:
-                best_w, name = b[2] - b[0], text
+                best_w, name, name_bounds = b[2] - b[0], text, b
+    center = _switcher_button_center(d, name_bounds)
+    if center is not None:  # chạm tâm nút cha clickable (cách chắc ăn nhất)
+        try:
+            jx, jy = random.randint(-8, 8), random.randint(-8, 8)
+            d.click(center[0] + jx, center[1] + jy)
+        except Exception:
+            pass
+        jitter(1.0, 2.0)
+        if _wait_switcher(d):
+            return True
     if name:
         for kwargs in ({"text": name}, {"description": name},
                        {"textContains": name}):
@@ -402,11 +460,11 @@ def _open_switcher(d):
                         return True
             except Exception:
                 continue
-    # chạm thẳng vào thanh trên cùng: giữa (chỗ tên) và lệch phải (chỗ mũi
-    # tên xổ xuống — trên bản TikTok của máy test, tên 'Street ver...' nằm
-    # giữa còn mũi tên nằm ở ~68% chiều rộng, và có bản chỉ nhận chạm vào
-    # mũi tên chứ không nhận chạm vào chữ tên
-    for xf, yf in ((0.5, 0.055), (0.5, 0.08), (0.68, 0.06)):
+    # chạm thẳng vào thanh trên cùng: giữa (chỗ tên) và lệch phải (gần mũi
+    # tên). Lưu ý: mũi tên chỉ là hình vẽ trong nút, không phải node riêng;
+    # điểm cũ (0.68w, 0.06h) rơi ra ngoài nút cha đúng 2px, trúng nút
+    # 'Profile views' bên cạnh nên vô dụng — điểm mới nằm trong nút cha.
+    for xf, yf in ((0.5, 0.055), (0.5, 0.08), (0.64, 0.07)):
         try:
             d.click(int(w * xf), int(h * yf))
         except Exception:
