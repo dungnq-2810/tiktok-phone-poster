@@ -10,6 +10,7 @@ Ghép cặp video/caption: video `x.mp4` lấy caption từ `x.txt` hoặc
 của clipgen (mỗi story một folder con chứa video + caption) là chạy luôn.
 
     python phone_poster.py --init            # cài agent lên điện thoại (USB, 1 lần)
+    python phone_poster.py --wifi            # chuyển sang ADB qua Wi-Fi để rút cáp
     python phone_poster.py --list-accounts   # mở TikTok, liệt kê các acc đã đăng nhập trong app
     python phone_poster.py --switch-to username   # đổi sang acc khác (đã đăng nhập sẵn) để test
     python phone_poster.py --dir D:\\outbox --dry-run   # chạy thử, dừng trước nút Đăng
@@ -42,7 +43,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = "20261024-9"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
+VERSION = "20261024-10"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
 PHONE_DIR = "/sdcard/DCIM/TikTokAuto"
@@ -791,6 +792,70 @@ def _connect(serial):
     return d
 
 
+def run_wifi():
+    """Chuyển điện thoại đang cắm USB sang ADB qua Wi-Fi để rút cáp được.
+
+    Thứ tự bắt buộc: lấy IP Wi-Fi TRƯỚC (khi còn nối USB), rồi mới tcpip
+    (lệnh này khởi động lại adbd nên USB rớt ngay sau đó), rồi connect IP.
+    Cắm cáp lại là về USB, không cần làm gì thêm."""
+    import shutil
+    import subprocess
+    adb = shutil.which("adb")
+    if not adb:
+        log("❌ Không tìm thấy lệnh adb trên PC này — cài Android platform-tools "
+            "rồi chạy lại (menu 1 đã từng chạy được thì adb phải có sẵn).")
+        return
+    out = subprocess.run([adb, "devices"], capture_output=True,
+                         text=True).stdout
+    usb = [l.split("\t")[0] for l in out.splitlines()
+           if l.rstrip().endswith("\tdevice")]
+    if not usb:
+        log("❌ Không thấy điện thoại nào qua USB — cắm cáp + bật USB debugging "
+            "rồi chạy lại.")
+        return
+    serial = next((s for s in usb if ":" not in s), usb[0])
+    log(f"Điện thoại qua USB: {serial}")
+    ip = None
+    r = subprocess.run([adb, "-s", serial, "shell", "ip", "addr", "show",
+                        "wlan0"], capture_output=True, text=True)
+    m = re.search(r"inet (\d+\.\d+\.\d+\.\d+)/", r.stdout)
+    if m:
+        ip = m.group(1)
+    if not ip:
+        r = subprocess.run([adb, "-s", serial, "shell", "ip", "route"],
+                           capture_output=True, text=True)
+        m = re.search(r"src (\d+\.\d+\.\d+\.\d+)", r.stdout)
+        if m:
+            ip = m.group(1)
+    if not ip:
+        log("❌ Không lấy được IP Wi-Fi — điện thoại đã nối Wi-Fi (cùng mạng "
+            "với PC) chưa?")
+        return
+    log(f"IP Wi-Fi của điện thoại: {ip}")
+    subprocess.run([adb, "-s", serial, "tcpip", "5555"], check=False)
+    time.sleep(2)
+    r = subprocess.run([adb, "connect", f"{ip}:5555"],
+                       capture_output=True, text=True)
+    log((r.stdout or "").strip())
+    time.sleep(1)
+    out = subprocess.run([adb, "devices"], capture_output=True,
+                         text=True).stdout
+    if f"{ip}:5555" in out:
+        log(f"✅ Xong: rút cáp được. Từ giờ chạy các mục khác bình thường "
+            f"(chỉ còn máy Wi-Fi nên tool tự chọn nó); hoặc chạy kèm "
+            f"--serial {ip}:5555 để chắc chắn.")
+        try:
+            import uiautomator2 as u2
+            d = u2.connect(f"{ip}:5555")
+            log(f"   Kiểm tra qua uiautomator2 OK: {d.info.get('productName')}")
+        except Exception:
+            log("   (adb nối được nhưng chưa nói chuyện được qua uiautomator2 "
+                "— thử chạy lại menu 2 để kiểm tra)")
+    else:
+        log("❌ Chưa thấy máy qua Wi-Fi — PC và điện thoại có cùng mạng Wi-Fi "
+            "không? Thử chạy lại mục này.")
+
+
 def run_init(serial):
     log("Cài agent uiautomator2 lên điện thoại (cần cắm USB + đã bật USB debugging)...")
     cmd = [sys.executable, "-m", "uiautomator2", "init"]
@@ -835,11 +900,17 @@ def main():
                     help="đổi sang acc @username đã đăng nhập sẵn, xác nhận xong thì "
                          "thoát (để test đổi acc)")
     ap.add_argument("--init", action="store_true", help="cài agent + kiểm tra kết nối rồi thoát")
+    ap.add_argument("--wifi", action="store_true",
+                    help="chuyển điện thoại đang cắm USB sang ADB qua Wi-Fi để rút cáp")
     args = ap.parse_args()
     log(f"TikTok Phone Poster, ban {VERSION}")
 
     if args.init:
         run_init(args.serial)
+        return
+
+    if args.wifi:
+        run_wifi()
         return
 
     if args.list_accounts or args.switch_to:

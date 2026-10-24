@@ -40,6 +40,7 @@ echo  3. Dang thu - dry-run (khong bam nut Dang)
 echo  4. Dang that (video trong thu muc outbox)
 echo  5. Xem cac acc da dang nhap trong TikTok
 echo  6. Doi acc thu (trong cac acc da dang nhap)
+echo  7. Chuyen sang ADB qua Wi-Fi (rut cap duoc)
 echo  0. Thoat
 echo =============================================
 set /p "CH=Chon so roi bam Enter: "
@@ -49,6 +50,7 @@ if "%CH%"=="3" goto M3
 if "%CH%"=="4" goto M4
 if "%CH%"=="5" goto M5
 if "%CH%"=="6" goto M6
+if "%CH%"=="7" goto M7
 if "%CH%"=="0" goto END
 goto MENUDONE
 
@@ -80,6 +82,10 @@ goto MENUDONE
 set /p "ACC=Doi sang acc nao? (nhap username): "
 if "%ACC%"=="" goto MENUDONE
 "%PY%" phone_poster.py --switch-to "%ACC%"
+goto MENUDONE
+
+:M7
+"%PY%" phone_poster.py --wifi
 goto MENUDONE
 
 :MENUDONE

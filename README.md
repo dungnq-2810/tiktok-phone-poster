@@ -140,6 +140,18 @@ mạng, file sửa tay xung đột...) thì nó báo một dòng rồi vẫn ch�
 có, không dừng lại; file sửa tay của bạn không bị ghi đè (pull --ff-only
 không merge khi có xung đột).
 
+## ADB qua Wi-Fi (rút cáp)
+
+Tool nói chuyện với điện thoại qua ADB nên rút cáp là mất kết nối, trừ khi
+đã chuyển sang ADB qua Wi-Fi. Mở `run_poster.bat` → mục **7**: nó tự lấy IP
+Wi-Fi của điện thoại (khi còn cắm cáp), chạy `tcpip 5555`, nối lại qua Wi-Fi
+rồi báo — từ đó rút cáp được, các mục khác chạy bình thường (chỉ còn máy
+Wi-Fi nên tool tự chọn nó; muốn chắc thì chạy kèm `--serial <IP>:5555`).
+Cắm cáp lại là về USB, không cần làm gì thêm. Lưu ý: PC và điện thoại phải
+cùng mạng Wi-Fi nhà (đừng bật kiểu này ở mạng công cộng); khởi động lại
+điện thoại là mất chế độ tcpip, phải cắm cáp chạy lại mục 7; IP có thể đổi
+khi router cấp lại nên đặt IP tĩnh cho điện thoại thì khỏi lo.
+
 ## Điện thoại tắt màn hình / khóa màn hình
 
 Trước mỗi lần mở TikTok, tool tự đánh thức màn hình + vuốt mở khóa (cú vuốt
