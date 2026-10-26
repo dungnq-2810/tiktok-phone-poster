@@ -1,0 +1,2593 @@
+{
+  "screen": "sua video",
+  "tiktok_version": null,
+  "elements": [
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "android:id/content",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/a3o",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/v5f",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/v5f",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/pvh",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/uwc",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h6q",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h6z",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h6y",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/video_record_gesture_layout",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h5c",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h5y",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/u1o",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/mxa",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/p_e",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/y68",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/at2",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h75",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h4t",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h74",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n3i",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n6l",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/bjf",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n08",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zl2",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/mx_",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/mzu",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/j5u",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h72",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/eon",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n18",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/haf",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/u1q",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h5_",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h73",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/ilc",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/l_n",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/ty8",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/z4o",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/ehm",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/z4n",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/xgy",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/lar",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tv_sticker_hint_container",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/v83",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h8e",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h7c",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/l26",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/chr",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1308,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/v85",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1308,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/my8",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1308,
+        720,
+        1400
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tqi",
+      "class": "android.widget.FrameLayout",
+      "clickable": true,
+      "bounds": [
+        24,
+        1312,
+        356,
+        1400
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tqn",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        71,
+        1323,
+        308,
+        1389
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tql",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        71,
+        1323,
+        137,
+        1389
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/bmf",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        71,
+        1323,
+        137,
+        1389
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/lxl",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        80,
+        1332,
+        128,
+        1380
+      ]
+    },
+    {
+      "text": "Your Story",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tv_quick_publish",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        149,
+        1336,
+        308,
+        1376
+      ]
+    },
+    {
+      "text": "Next",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/q0w",
+      "class": "android.widget.LinearLayout",
+      "clickable": true,
+      "bounds": [
+        364,
+        1312,
+        696,
+        1400
+      ]
+    },
+    {
+      "text": "Next",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/q0y",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        494,
+        1336,
+        566,
+        1376
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h79",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1312
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h8d",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1140,
+        720,
+        1312
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/l_m",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1280
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/lag",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/uzd",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/lb9",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.RelativeLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        100,
+        720,
+        924
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/z5r",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1280
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1280
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n2r",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/e23",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        171
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/e1z",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        225,
+        83,
+        494,
+        171
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/e29",
+      "class": "android.widget.LinearLayout",
+      "clickable": true,
+      "bounds": [
+        225,
+        83,
+        494,
+        171
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/e27",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        229,
+        83,
+        490,
+        171
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.view.ViewGroup",
+      "clickable": false,
+      "bounds": [
+        229,
+        109,
+        289,
+        145
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Music",
+      "res": "com.zhiliaoapp.musically:id/e24",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        257,
+        109,
+        289,
+        141
+      ]
+    },
+    {
+      "text": "Add sound",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/tv_top_text",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        289,
+        83,
+        478,
+        171
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h8a",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zg9",
+      "class": "android.view.ViewGroup",
+      "clickable": false,
+      "bounds": [
+        0,
+        79,
+        720,
+        362
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/bs6",
+      "class": "android.widget.ImageView",
+      "clickable": true,
+      "bounds": [
+        24,
+        98,
+        88,
+        162
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        420,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/iiy",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        79,
+        720,
+        287
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Settings",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        79,
+        720,
+        183
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        79,
+        720,
+        183
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        99,
+        696,
+        163
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        79,
+        712,
+        175
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Share",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        183,
+        720,
+        287
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        183,
+        720,
+        287
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        203,
+        696,
+        267
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        632,
+        203,
+        696,
+        267
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        183,
+        712,
+        279
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/nex",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        644,
+        299,
+        684,
+        301
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/wst",
+      "class": "android.widget.ScrollView",
+      "clickable": false,
+      "bounds": [
+        608,
+        313,
+        720,
+        1041
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/wss",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        313,
+        720,
+        1041
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Edit",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        313,
+        720,
+        417
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        313,
+        720,
+        417
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        333,
+        696,
+        397
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        313,
+        712,
+        409
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Templates",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        417,
+        720,
+        521
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        417,
+        720,
+        521
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        417,
+        720,
+        521
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        437,
+        696,
+        501
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        417,
+        712,
+        513
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Text",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        521,
+        720,
+        625
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        521,
+        720,
+        625
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        541,
+        696,
+        605
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        521,
+        712,
+        617
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Stickers",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        625,
+        720,
+        729
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        625,
+        720,
+        729
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        645,
+        696,
+        709
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        625,
+        712,
+        721
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Filters",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        729,
+        720,
+        833
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        729,
+        720,
+        833
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        749,
+        696,
+        813
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        729,
+        712,
+        825
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Voice",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        833,
+        720,
+        937
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        833,
+        720,
+        937
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        853,
+        696,
+        917
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        833,
+        712,
+        929
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Captions",
+      "res": "",
+      "class": "android.widget.Button",
+      "clickable": true,
+      "bounds": [
+        608,
+        937,
+        720,
+        1041
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/d31",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        608,
+        937,
+        720,
+        1041
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/zlb",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        632,
+        957,
+        696,
+        1021
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/m_h",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        616,
+        937,
+        712,
+        1033
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h76",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        292,
+        1272,
+        428,
+        1408
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.RelativeLayout",
+      "clickable": false,
+      "bounds": [
+        292,
+        1272,
+        428,
+        1408
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h8b",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        164
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/n7e",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        55,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.zhiliaoapp.musically:id/h5a",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        55,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        55,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        55,
+        720,
+        1055
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1424
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        1280
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/scrim_behind",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/scrim_in_front",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/status_bar_container",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/status_bar",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        0,
+        720,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/phone_status_bar_contents_container",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        8,
+        0,
+        712,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        35,
+        14,
+        361,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/clock_container",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        35,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/leftside",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        35,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "11:16 PM",
+      "desc": "",
+      "res": "com.android.systemui:id/clock",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        35,
+        14,
+        146,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/drip_leftear_super_container",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notification_icon_area",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notification_icon_area_inner",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notificationIcons",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notification_icon_area_inner",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notificationIcons",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        146,
+        14,
+        301,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "HMA VPN notification: Connected to .... Hoa Kỳ, Columbus",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        146,
+        21,
+        182,
+        47
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Google notification: Cooling over next 4 days",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        182,
+        21,
+        218,
+        47
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Android System notification: USB debugging is on",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        218,
+        21,
+        254,
+        47
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Android System notification: Charging this device via USB",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        254,
+        21,
+        290,
+        47
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Google notification: vietnamnews.vn",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        264,
+        21,
+        300,
+        47
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/system_icon_area",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        361,
+        14,
+        688,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/drip_right_content",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        419,
+        14,
+        688,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/system_icons",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        494,
+        14,
+        688,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/signal_cluster_view",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        494,
+        14,
+        618,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/signal_cluster",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        494,
+        14,
+        618,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "VPN on.",
+      "res": "com.android.systemui:id/vpn",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        494,
+        16,
+        537,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/mobile_signal_group_dual_notch",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        537,
+        14,
+        545,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/mobile_combo",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        537,
+        14,
+        545,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/notch_carrier",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        537,
+        14,
+        541,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/mobile_type",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        541,
+        14,
+        545,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/no_sims",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        545,
+        16,
+        579,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Wifi signal full.",
+      "res": "com.android.systemui:id/wifi_combo",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        579,
+        16,
+        618,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/wifi_signal",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        579,
+        16,
+        618,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/wifi_inout",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        600,
+        16,
+        618,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/battery",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        618,
+        14,
+        688,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        618,
+        16,
+        675,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Battery charging, 100 percent.",
+      "res": "com.android.systemui:id/battery_image",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        618,
+        16,
+        675,
+        54
+      ]
+    },
+    {
+      "text": "100",
+      "desc": "",
+      "res": "com.android.systemui:id/battery_digit",
+      "class": "android.widget.TextView",
+      "clickable": false,
+      "bounds": [
+        631,
+        16,
+        658,
+        54
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.ImageView",
+      "clickable": false,
+      "bounds": [
+        675,
+        14,
+        688,
+        55
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1424,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/rot0",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1424,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/deadzone",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        1424,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/nav_buttons",
+      "class": "android.widget.LinearLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1424,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/start_padding",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        0,
+        1424,
+        155,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Overview",
+      "res": "com.android.systemui:id/recent_apps",
+      "class": "android.widget.ImageView",
+      "clickable": true,
+      "bounds": [
+        155,
+        1424,
+        265,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Home",
+      "res": "com.android.systemui:id/home",
+      "class": "android.widget.ImageView",
+      "clickable": true,
+      "bounds": [
+        304,
+        1424,
+        414,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "Back",
+      "res": "com.android.systemui:id/back",
+      "class": "android.widget.ImageView",
+      "clickable": true,
+      "bounds": [
+        453,
+        1424,
+        563,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "com.android.systemui:id/side_padding",
+      "class": "android.widget.FrameLayout",
+      "clickable": false,
+      "bounds": [
+        563,
+        1424,
+        720,
+        1520
+      ]
+    },
+    {
+      "text": "",
+      "desc": "",
+      "res": "",
+      "class": "android.view.View",
+      "clickable": false,
+      "bounds": [
+        0,
+        245,
+        25,
+        410
+      ]
+    }
+  ]
+}

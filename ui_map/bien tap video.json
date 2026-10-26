@@ -1,0 +1,19 @@
+{
+  "screen": "bien tap video",
+  "tiktok_version": null,
+  "elements": [
+    {
+      "text": "Next",
+      "desc": "Next",
+      "res": "com.zhiliaoapp.musically:id/ale",
+      "class": "android.widget.ImageView",
+      "clickable": true,
+      "bounds": [
+        592,
+        55,
+        720,
+        167
+      ]
+    }
+  ]
+}

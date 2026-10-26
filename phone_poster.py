@@ -47,6 +47,12 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 VERSION = "20261024-22"  # in ra đầu mỗi lần chạy để biết chắc đang chạy bản nào
 
 TIKTOK_PKG = "com.zhiliaoapp.musically"
@@ -61,7 +67,7 @@ TXT_POST = ["Post", "Đăng"]
 TXT_CAPTION_HINT = ["Add a description", "Thêm mô tả", "Describe your video",
                     "Mô tả video", "Add description"]
 TXT_DISMISS = ["Not now", "Để sau", "Skip", "Bỏ qua", "Later", "Lúc khác",
-               "Allow", "Cho phép", "OK"]
+               "Allow", "Cho phép", "OK", "Save draft", "Lưu bản nháp", "Discard", "Hủy"]
 TXT_UPLOAD_ERROR = ["Couldn't upload", "Không thể tải lên", "Upload failed",
                     "Tải lên thất bại", "Try again", "Thử lại"]
 TXT_HOME = ["Home", "Trang chủ"]
@@ -191,11 +197,44 @@ def _in_region(bounds, region, w, h):
     return True
 
 
+def _find_clickable_parent(d, el):
+    """Tìm phần tử cha clickable gần nhất bao quanh el (cho TextView Tiếp không clickable trong editor)."""
+    try:
+        b = (el.info or {}).get("bounds")
+        if not b:
+            return None
+        root_el = _parse_nodes(d)
+        if root_el is None:
+            return None
+        x1, y1, x2, y2 = b["left"], b["top"], b["right"], b["bottom"]
+        best = None
+        for node in root_el.iter("node"):
+            if node.get("clickable") != "true":
+                continue
+            nb = _node_bounds(node)
+            if not nb:
+                continue
+            if nb[0] <= x1 and nb[1] <= y1 and nb[2] >= x2 and nb[3] >= y2:
+                area = (nb[2] - nb[0]) * (nb[3] - nb[1])
+                if best is None or area < best[0]:
+                    best = (area, node)
+        if best is not None:
+            res = best[1].get("resource-id")
+            if res:
+                p_el = d(resourceId=res)
+                if p_el.exists(timeout=0.2):
+                    return p_el
+    except Exception:
+        pass
+    return None
+
+
 def _try_click(d, variants, timeout=6.0, exact_first=True, region=None):
     """Bấm phần tử theo text/description trong danh sách biến thể. True nếu
     bấm được. 2 lượt: lượt 1 chỉ khớp CHÍNH XÁC (tránh caption chứa chữ
     trùng — vd caption 'link in profile' không được tính là nút Profile);
-    lượt 2 mới dùng Contains. Có region thì chỉ bấm phần tử đúng vùng."""
+    lượt 2 mới dùng Contains. Có region thì chỉ bấm phần tử đúng vùng.
+    Nếu phần tử tìm được không clickable (vd TextView Next), bấm cha clickable."""
     w, h = d.window_size()
     passes = (("text", "description"), ("textContains", "descriptionContains"))
     if not exact_first:
@@ -219,22 +258,57 @@ def _try_click(d, variants, timeout=6.0, exact_first=True, region=None):
                             bounds = info.get("bounds")
                             if not _in_region(bounds, region, w, h):
                                 continue
-                            if _tap_human(d, el, label=f"'{v}'"):
+                            target = el
+                            try:
+                                if not (el.info or {}).get("clickable", True):
+                                    parent_el = _find_clickable_parent(d, el)
+                                    if parent_el is not None:
+                                        target = parent_el
+                            except Exception:
+                                pass
+                            if _tap_human(d, target, label=f"'{v}'"):
                                 return True
                     except Exception:
                         continue
+        root_el = _parse_nodes(d)
+        if root_el is not None:
+            for node in root_el.iter("node"):
+                t = (node.get("text") or "").strip()
+                desc = (node.get("content-desc") or "").strip()
+                for v in variants:
+                    if t == v or desc == v:
+                        b = _node_bounds(node)
+                        if b and _in_region({"left": b[0], "top": b[1], "right": b[2], "bottom": b[3]}, region, w, h):
+                            cx, cy = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
+                            try:
+                                d.click(cx, cy)
+                                log(f"   bấm '{v}' (từ XML dump) @({cx},{cy})")
+                                return True
+                            except Exception:
+                                pass
         time.sleep(0.5)
     return False
 
 
 def _exists(d, variants):
     for v in variants:
-        for kwargs in ({"text": v}, {"textContains": v}, {"description": v}):
+        # Khớp chính xác trước để tránh nút 'Posts' trên profile hoặc
+        # 'Everyone can view this post' ăn mất nút 'Post'
+        for kwargs in ({"text": v}, {"description": v}):
             try:
                 if d(**kwargs).exists(timeout=0.3):
                     return True
             except Exception:
                 continue
+    # Nếu không phải nút Đăng thì mới thử Contains
+    if variants != TXT_POST:
+        for v in variants:
+            for kwargs in ({"textContains": v}, {"descriptionContains": v}):
+                try:
+                    if d(**kwargs).exists(timeout=0.3):
+                        return True
+                except Exception:
+                    continue
     return False
 
 
@@ -318,7 +392,8 @@ def _open_tiktok(d):
 
 
 def _click_first_gallery_item(d):
-    """Bấm ô video đầu tiên (mới nhất) trong lưới chọn video của TikTok."""
+    """Bấm ô video đầu tiên (mới nhất) trong lưới chọn video của TikTok.
+    Bỏ qua ô Camera (ô đầu tiên khi có chụp ảnh)."""
     w, h = d.window_size()
     try:
         root_el = ET.fromstring(d.dump_hierarchy())
@@ -334,8 +409,13 @@ def _click_first_gallery_item(d):
                 continue
             x1, y1, x2, y2 = map(int, m.groups())
             cw, ch = x2 - x1, y2 - y1
-            # Ô lưới: rộng khoảng 1/5–1/2 màn hình, nằm dưới thanh trên cùng
-            if 0.18 * w <= cw <= 0.5 * w and y1 >= 0.10 * h and y2 <= 0.92 * h and ch > 40:
+            # Ô lưới: rộng khoảng 1/5–1/2 màn hình, nằm dưới thanh tab trên và trên thanh dưới
+            if 0.18 * w <= cw <= 0.5 * w and y1 >= 0.10 * h and y2 <= 0.85 * h and ch > 40:
+                # Bỏ qua ô Camera: kiểm tra xem node hoặc con có text/desc chứa 'Camera' / 'Máy ảnh'
+                desc_texts = [n.get("text", "") + " " + n.get("content-desc", "")
+                              for n in node.iter("node")]
+                if any("camera" in t.lower() or "máy ảnh" in t.lower() for t in desc_texts):
+                    continue
                 key = (y1, x1)
                 if best is None or key < best[0]:
                     best = (key, (x1 + x2) // 2, (y1 + y2) // 2)
@@ -343,12 +423,12 @@ def _click_first_gallery_item(d):
         jx, jy = random.randint(-8, 8), random.randint(-8, 8)
         d.click(best[1] + jx, best[2] + jy)
         return True
-    # Dự phòng: vị trí tương đối của ô đầu tiên trong lưới
+    # Dự phòng: vị trí tương đối của ô đầu tiên trong lưới (cột 2 nếu cột 1 là Camera)
     if STRICT_UI:
         raise JobError("không nhận diện được ô video trong lưới bằng element "
                        "— strict mode không bấm tọa độ dự phòng")
-    d.click(int(w * 0.17) + random.randint(-10, 10),
-            int(h * 0.32) + random.randint(-10, 10))
+    d.click(int(w * 0.50) + random.randint(-10, 10),
+            int(h * 0.25) + random.randint(-10, 10))
     return True
 
 
@@ -408,7 +488,7 @@ def _match_role(elements, variants, exact_only=False):
                     continue
                 if el.get("text") == v or el.get("desc") == v:
                     return el
-    if exact_only:
+    if exact_only or variants == TXT_POST:
         return None
     for want_click in (True, False):
         for v in variants:
@@ -515,45 +595,66 @@ def load_ui_map():
     return m
 
 
-def _mapped_selector(variants):
-    """Selector ghi san tu file map: resource-id thang luon neu co (on dinh
-    nhat), khong thi text/desc chinh xac. None = map khong biet role nay.
-    Hai luot qua TAT CA man: luot 1 chi khop CHINH XAC (tab 'Posts' khong
-    duoc tinh la nut 'Post' du no dung truoc theo thu tu file), luot 2
-    moi toi Contains."""
+def _mapped_selectors(variants):
+    """Danh sách các selector ghi sẵn từ file map theo thứ tự ưu tiên:
+    resource-id trước, rồi mới tới text/desc chính xác.
+    Hai lượt qua tất cả màn: lượt 1 chỉ khớp chính xác, lượt 2 mới tới Contains."""
+    sels = []
+    seen = set()
     for exact_only in (True, False):
-        best = None
         for screen in sorted(load_ui_map()):
-            el = _match_role(load_ui_map()[screen], variants,
-                             exact_only=exact_only)
+            el = _match_role(load_ui_map()[screen], variants, exact_only=exact_only)
             if not el:
                 continue
-            if el.get("res"):
-                return {"resourceId": el["res"]}
-            if best is None:
-                if el.get("text"):
-                    best = {"text": el["text"]}
-                elif el.get("desc"):
-                    best = {"description": el["desc"]}
-        if best is not None:
-            return best
-    return None
+            res = el.get("res")
+            if res and res not in seen:
+                sels.append({"resourceId": res})
+                seen.add(res)
+            elif not res:
+                t = el.get("text")
+                if t and ("text", t) not in seen:
+                    sels.append({"text": t})
+                    seen.add(("text", t))
+                d = el.get("desc")
+                if d and ("desc", d) not in seen:
+                    sels.append({"description": d})
+                    seen.add(("desc", d))
+    return sels
+
+
+def _mapped_selector(variants):
+    """Selector ghi sẵn từ file map: selector đầu tiên khớp role."""
+    sels = _mapped_selectors(variants)
+    return sels[0] if sels else None
 
 
 def _try_click_mapped(d, variants, timeout=6.0, region=None):
-    """Bấm theo file map trước, rồi mới về tìm live kiểu cũ. Có map thì
-    lần bấm này chính xác hơn vì resource-id không đổi theo ngôn ngữ hay
-    text hiển thị; không có map thì hành vi y hệt _try_click."""
-    sel = _mapped_selector(variants)
-    if sel is not None:
-        try:
-            el = d(**sel)
-            if el.exists(timeout=0.5) and _tap_human(d, el):
-                log(f"   (map) bấm theo file map: {sel}")
-                return True
-        except Exception:
-            pass
-    return _try_click(d, variants, timeout=timeout, region=region)
+    """Bấm theo file map trước (thử các selector từ các file map),
+    rồi mới về tìm live kiểu cũ. Nếu phần tử tìm được không clickable
+    (vd TextView Tiếp trong màn biên tập), bấm nút cha clickable của nó."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        for sel in _mapped_selectors(variants):
+            try:
+                el = d(**sel)
+                if el.exists(timeout=0.3):
+                    target = el
+                    try:
+                        if not (el.info or {}).get("clickable", True):
+                            parent_el = _find_clickable_parent(d, el)
+                            if parent_el is not None:
+                                target = parent_el
+                    except Exception:
+                        pass
+                    if _tap_human(d, target, label=str(sel)):
+                        log(f"   (map) bấm theo file map: {sel}")
+                        return True
+            except Exception:
+                pass
+        if _try_click(d, variants, timeout=0.3, region=region):
+            return True
+        time.sleep(0.3)
+    return False
 
 
 # ------------------------------------------------------------- accounts ----
@@ -745,9 +846,12 @@ def _handles_on_screen(d):
     for node in root_el.iter("node"):
         for attr in ("text", "content-desc"):
             m = HANDLE_RE.search(node.get(attr) or "")
-            if m and not _is_resource_ref_handle(m.group(1)):
+            if m:
+                h = m.group(1).lower()
+                if h.isdigit() or _is_resource_ref_handle(h):
+                    continue
                 b = _node_bounds(node)
-                found.append((m.group(1).lower(), b[1] if b else 0))
+                found.append((h, b[1] if b else 0))
                 break
     found.sort(key=lambda t: t[1])
     return found
@@ -770,11 +874,14 @@ def _own_profile_handle(d):
     for node in root_el.iter("node"):
         for attr in ("text", "content-desc"):
             m = HANDLE_RE.search(node.get(attr) or "")
-            if m and not _is_resource_ref_handle(m.group(1)):
+            if m:
+                handle = m.group(1).lower()
+                if handle.isdigit() or _is_resource_ref_handle(handle):
+                    continue
                 b = _node_bounds(node)
                 y = b[1] if b else 0
                 if y < 0.40 * h and (best is None or y < best[1]):
-                    best = (m.group(1).lower(), y)
+                    best = (handle, y)
                 break
     return best[0] if best else None
 
@@ -798,24 +905,26 @@ def current_account(d):
 
     Header trang Hồ sơ (avatar, @handle, số liệu) tải chập chờn — có lần
     dump ra không có lấy một node @handle nào (trang chưa tải xong, hay gặp
-    khi mạng/VPN chậm) nên đọc một phát là trượt oan. Giờ chờ tối đa ~12s,
-    giữa chừng kéo làm mới trang một lần và bấm lại tab Hồ sơ một lần, rồi
-    mới kết luận là không đọc được."""
+    khi mạng/VPN chậm) hoặc trang bị cuộn xuống che mất header. Giờ chờ tối đa ~12s,
+    nếu bị cuộn thì vuốt cuộn lên đầu trang và bấm lại tab Hồ sơ để đọc lại."""
     _open_tiktok(d)  # đảm bảo TikTok đang mở thật trước khi đọc (trước đây
     # ensure_account gọi thẳng vào đây khi app còn chưa mở, nên đọc trượt)
     _goto_profile(d)
+    w, h = d.window_size()
     for attempt in range(12):
         handle = _own_profile_handle(d)  # chỉ @ vùng header, không lấy @
         if handle:                       # tác giả video khi bấm tab trượt
             return handle
-        if attempt == 4:
-            try:  # kéo xuống làm mới trang (header tải dở)
-                w, h = d.window_size()
-                d.swipe(w // 2, int(h * 0.30), w // 2, int(h * 0.60),
-                        duration=0.5)
+        try:
+            _try_click(d, TXT_DISMISS, timeout=0.3)
+        except Exception:
+            pass
+        if attempt in (2, 5, 8):
+            try:  # nếu header bị cuộn mất: vuốt từ trên xuống để cuộn về đầu trang
+                d.swipe(w // 2, int(h * 0.25), w // 2, int(h * 0.75), duration=0.4)
             except Exception:
                 pass
-        if attempt == 8:
+            jitter(1.0, 1.5)
             _goto_profile(d)
         time.sleep(1.0)
     if _exists(d, TXT_LOGIN):
@@ -1221,12 +1330,50 @@ def _nurture_search(d, keyword, like_cap, likes_done, watched, per_keyword=6):
         jitter(1.0, 2.0)
         d.press("enter")
         jitter(2.0, 3.5)
+        # Bấm vào video đầu tiên trong kết quả tìm kiếm để mở xem toàn màn hình
+        opened_video = False
+        try:
+            for res_id in ("com.zhiliaoapp.musically:id/vnn", "com.zhiliaoapp.musically:id/desc"):
+                card = d(resourceId=res_id)
+                if card.exists(timeout=1.5):
+                    log("   → Bấm vào video trong kết quả tìm kiếm để bắt đầu xem")
+                    _tap_human(d, card)
+                    opened_video = True
+                    jitter(1.5, 2.5)
+                    break
+            if not opened_video:
+                root_el = _parse_nodes(d)
+                if root_el is not None:
+                    w, h = d.window_size()
+                    for node in root_el.iter("node"):
+                        if node.get("clickable") == "true":
+                            b = _node_bounds(node)
+                            if b and b[1] > 0.18 * h and b[3] < 0.70 * h and (b[2] - b[0]) > 0.30 * w:
+                                cx, cy = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
+                                d.click(cx, cy)
+                                log(f"   → Bấm thẻ video @({cx},{cy})")
+                                opened_video = True
+                                jitter(1.5, 2.5)
+                                break
+            if not opened_video and not STRICT_UI:
+                w, h = d.window_size()
+                d.click(int(w * 0.25), int(h * 0.35))
+                jitter(1.5, 2.5)
+        except Exception:
+            pass
+
         for _ in range(per_keyword):
             likes_done, _ = _watch_one(d, like_cap, likes_done,
                                        idx=watched + 1)
             watched += 1
-        d.press("back")
-        jitter(1.0, 2.0)
+        try:
+            d.press("back")
+            jitter(1.0, 1.5)
+            d.press("back")
+            jitter(1.0, 1.5)
+            _try_click_mapped(d, TXT_HOME, timeout=2.0, region="bottom")
+        except Exception:
+            pass
         return watched, likes_done, True
     except Exception as e:
         log(f"   (tìm kiếm '{keyword}' lỗi: {e} — bỏ qua, nuôi bằng FYP)")
@@ -1279,7 +1426,7 @@ def nurture_session(d, min_s=1200, max_s=2400, keywords=None, like_cap=8):
             "interrupted": interrupted}
 
 
-def nurture_all(d, root, like_cap=8, min_s=540, max_s=660):
+def nurture_all(d, root, like_cap=8, min_s=540, max_s=660, default_keywords=None):
     """Nuôi TẤT CẢ acc đang đăng nhập trong app, mỗi acc ~10 phút rồi đổi.
     Ngách đã config (accounts.json) là master: acc có ngách -> tìm kiếm
     từ khóa của ngách đó (niche_keywords.json, hoặc chính nhãn ngách nếu
@@ -1290,11 +1437,11 @@ def nurture_all(d, root, like_cap=8, min_s=540, max_s=660):
     if not accounts:
         raise JobError("không thấy acc nào đăng nhập trong app TikTok")
     niches = load_niches()
-    log(f"→ Nuôi tất cả {len(accounts)} acc, mỗi acc ~10 phút rồi đổi acc.")
+    log(f"→ Nuôi tất cả {len(accounts)} acc, mỗi acc ~{min_s/60:.1f}–{max_s/60:.1f} phút rồi đổi acc.")
     results = []
     for user in accounts:
         niche = niches.get(user, "")
-        kws = keywords_for_niche(niche)
+        kws = keywords_for_niche(niche) or (default_keywords or [])
         try:
             switch_account(d, user)
         except Exception as e:
@@ -1302,8 +1449,8 @@ def nurture_all(d, root, like_cap=8, min_s=540, max_s=660):
             results.append({"user": user, "niche": niche, "status": "skip",
                             "reason": str(e)})
             continue
-        if niche and kws:
-            log(f"→ Nuôi @{user} (ngách {niche}, từ khóa: {', '.join(kws)})")
+        if kws:
+            log(f"→ Nuôi @{user} (ngách: {niche or 'chung'}, từ khóa: {', '.join(kws)})")
         elif niche:
             log(f"→ Nuôi @{user} (ngách {niche} chưa có từ khóa — lướt FYP thôi)")
         else:
@@ -1433,6 +1580,21 @@ def warmup_feed(d, min_s=60, max_s=120, swipes=None):
         jitter(0.5, 1.5)
 
 
+def _is_gallery_screen(d):
+    """Màn hình chọn video/ảnh từ thư viện: có tab All/Videos/Photos, hoặc Recents, hoặc Select multiple."""
+    for kw in ({"text": "All"}, {"text": "Videos"}, {"text": "Photos"},
+               {"text": "Tất cả"}, {"text": "Video"}, {"text": "Ảnh"},
+               {"text": "Recents"}, {"text": "Gần đây"}, {"text": "Select multiple"},
+               {"text": "Chọn nhiều"}, {"description": "Videos"}, {"description": "All"},
+               {"resourceId": "com.zhiliaoapp.musically:id/dw6"}):
+        try:
+            if d(**kw).exists(timeout=0.3):
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     video: Path = job["video"]
     caption: str = job["caption"]
@@ -1459,8 +1621,13 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
         d.click(w // 2 + random.randint(-12, 12),
                 int(h * 0.93) + random.randint(-8, 8))  # nút + ở giữa thanh dưới
         jitter()
-    if not _try_click_mapped(d, TXT_UPLOAD, timeout=8.0):
-        raise JobError("không thấy nút Tải lên (Upload) trong màn hình tạo video")
+    jitter(1.5, 2.5)
+
+    # Nếu chưa ở màn hình thư viện thì tìm nút Tải lên (Upload)
+    if not _is_gallery_screen(d):
+        if not _try_click_mapped(d, TXT_UPLOAD, timeout=6.0):
+            if not _is_gallery_screen(d):
+                raise JobError("không thấy nút Tải lên (Upload) trong màn hình tạo video")
     jitter(2.0, 3.5)
 
     log("→ Chọn video mới nhất trong thư viện")
@@ -1474,12 +1641,12 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
 
     log("→ Nhập caption")
     field = None
-    sel = _mapped_selector(TXT_CAPTION_HINT)  # ô caption theo file map trước
-    if sel is not None:
+    for sel in _mapped_selectors(TXT_CAPTION_HINT):  # ô caption theo file map trước
         try:
             el = d(**sel)
             if el.exists(timeout=0.5):
                 field = el
+                break
         except Exception:
             pass
     if field is None:
@@ -1497,9 +1664,43 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     _type_human(d, field, caption)
     jitter()
 
+    # Tìm nút Đăng (Post): tìm trong danh sách mapped selectors hoặc text/desc
+    post_btn = None
+    for attempt in range(5):
+        for sel in _mapped_selectors(TXT_POST):
+            try:
+                el = d(**sel)
+                if el.exists(timeout=0.8):
+                    post_btn = el
+                    break
+            except Exception:
+                pass
+        if post_btn is None:
+            for v in TXT_POST:
+                el = d(text=v)
+                if el.exists(timeout=0.5):
+                    post_btn = el
+                    break
+                el = d(description=v)
+                if el.exists(timeout=0.5):
+                    post_btn = el
+                    break
+        if post_btn is not None:
+            break
+        jitter(1.0, 1.5)
+
+    if post_btn is None:
+        raise JobError("đã ở màn hình caption nhưng không thấy nút Đăng (Post)")
+
     if dry_run:
-        log("🧪 DRY-RUN: dừng tại màn hình đăng — KHÔNG bấm Đăng.")
+        log("🧪 DRY-RUN: dừng tại màn hình đăng — ô caption và nút Đăng đều hiển thị. KHÔNG bấm Đăng.")
         d.screenshot(str(root / f"dryrun_{stem}.png"))
+        try:
+            log("→ Tắt app TikTok sau dry-run để làm lại từ đầu.")
+            d.app_stop(TIKTOK_PKG)
+            jitter(1.5, 2.5)
+        except Exception:
+            pass
         return "dry-run"
 
     log("→ Xem lại caption một lúc như người thật rồi mới bấm Đăng")
@@ -1516,6 +1717,12 @@ def post_one(d, job: dict, root: Path, dry_run=False, keep_on_phone=False):
     if not keep_on_phone:
         d.shell(["rm", remote])
     log(f"✅ Đã đăng: {video.name}")
+    try:
+        log("→ Tắt app TikTok sau khi đăng để làm lại từ đầu.")
+        d.app_stop(TIKTOK_PKG)
+        jitter(1.5, 2.5)
+    except Exception:
+        pass
     return "posted"
 
 
@@ -1933,9 +2140,13 @@ def main():
         except JobError as e:
             log(f"❌ {e}")
             sys.exit(1)
+        keywords = [k.strip() for k in args.nurture_keywords.split(",") if k.strip()]
         try:
             nurture_all(d, Path(args.dir).resolve(),
-                        like_cap=args.nurture_likes)
+                        like_cap=args.nurture_likes,
+                        min_s=args.nurture_min,
+                        max_s=args.nurture_max,
+                        default_keywords=keywords)
         except JobError as e:
             log(f"❌ {e}")
             sys.exit(1)
@@ -1991,14 +2202,31 @@ def main():
             f"file xong/lỗi sẽ vào _done-{tag}/_failed-{tag}.")
     prefix = f"[{tag}] " if tag else ""
 
+    # Luôn kiểm tra acc đang mở — không bypass current-account check
+    try:
+        cur_acc = current_account(d)
+        log(f"Acc đang mở: @{cur_acc}")
+    except Exception as e:
+        where = _dump_debug(d, root, "account")
+        log(f"❌ Không kiểm tra được acc đang mở: {e}")
+        log(f"   Ảnh chụp + cấu trúc màn hình ở {where} — DỪNG, chưa đăng gì.")
+        return
+
+    # Never bypass the abort on verification demand
+    if _exists(d, TXT_VERIFY_BLOCK):
+        where = _dump_debug(d, root, "verify_block")
+        log(f"❌ TikTok yêu cầu xác minh (verify identity) — DỪNG. Xem {where}")
+        return
+
     if args.account:
-        try:
-            ensure_account(d, args.account)
-        except Exception as e:
-            where = _dump_debug(d, root, "account")
-            log(f"❌ Không đảm bảo được đúng acc @{_norm_user(args.account)}: {e}")
-            log(f"   Ảnh chụp + cấu trúc màn hình ở {where} — DỪNG, chưa đăng gì.")
-            return
+        if _norm_user(cur_acc) != _norm_user(args.account):
+            try:
+                ensure_account(d, args.account)
+            except Exception as e:
+                where = _dump_debug(d, root, "account")
+                log(f"❌ Không đảm bảo được đúng acc @{_norm_user(args.account)}: {e}")
+                log(f"   Ảnh chụp + cấu trúc màn hình ở {where} — DỪNG, chưa đăng gì.")
+                return
 
     if not args.no_warmup:
         warmup_feed(d, min_s=args.warmup_min, max_s=args.warmup_max)
@@ -2010,6 +2238,10 @@ def main():
             log(f"⏳ Nghỉ {gap}s cho giống người thật...")
             time.sleep(gap)
         log(f"===== {prefix}{i + 1}/{len(jobs)}: {job['video'].name} =====")
+        if _exists(d, TXT_VERIFY_BLOCK):
+            where = _dump_debug(d, root, "verify_block")
+            log(f"❌ TikTok yêu cầu xác minh trước khi đăng — DỪNG. Xem {where}")
+            return
         if args.account:
             try:
                 ensure_account(d, args.account)
@@ -2018,19 +2250,30 @@ def main():
                 log(f"❌ Sai acc trước khi đăng {job['video'].name}: {e} — DỪNG cả "
                     f"lần chạy, video còn nguyên trong hàng đợi. Xem {where}")
                 return
+        else:
+            try:
+                cur_job_acc = current_account(d)
+                log(f"Xác nhận acc đang mở trước khi xử lý: @{cur_job_acc}")
+            except Exception as e:
+                where = _dump_debug(d, root, "account")
+                log(f"❌ Không kiểm tra được acc: {e} — DỪNG. Xem {where}")
+                return
         try:
             result = post_one(d, job, root, dry_run=args.dry_run,
                               keep_on_phone=args.keep_on_phone)
             if result == "posted":
                 posted += 1
                 _move_job(root, job, "_done", tag)
+            elif result == "dry-run":
+                log(f"✅ DRY-RUN THÀNH CÔNG cho {job['video'].name}: đã đến màn hình caption (ô caption + nút Đăng hiển thị). Giữ nguyên file.")
         except Exception as e:
             failed += 1
             where = _dump_debug(d, root, job["video"].stem)
             log(f"❌ Lỗi: {e} — ảnh chụp + cấu trúc màn hình đã lưu ở {where}")
-            _move_job(root, job, "_failed", tag)
+            if not args.dry_run:
+                _move_job(root, job, "_failed", tag)
             try:
-                d.app_start(TIKTOK_PKG, stop=False)
+                d.app_stop(TIKTOK_PKG)
             except Exception:
                 pass
     log(f"Hoàn tất: đăng {posted}, lỗi {failed}, dry-run/khác {len(jobs) - posted - failed}.")

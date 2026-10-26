@@ -83,6 +83,9 @@ class FakeDevice:
             self.current_pkg = pkg
         else:
             self.current_pkg = "com.android.systemui"
+    def app_stop(self, pkg=None):
+        self.calls.append(("app_stop", pkg))
+        self.current_pkg = ""
     def window_size(self): return (1080, 2400)
     def click(self, x, y):
         self.calls.append(("tap", x, y))
@@ -200,17 +203,18 @@ class FakeDevice:
         return False  # popup, lỗi tải lên...: không có
     def el_click(self, key):
         self.calls.append(("click", key))
-        if key in ("Profile", "Hồ sơ"):
+        skey = str(key)
+        if key in ("Profile", "Hồ sơ") or "onj" in skey:
             self.on_profile = True
-        if key in ("Acc One", "Acc Two") and self.on_profile:
+        if (key in ("Acc One", "Acc Two") or "ne_" in skey) and self.on_profile:
             self.sheet_open = True
         if key in ("acc_one", "acc_two") and self.sheet_open:
             self.current = key
             self.sheet_open = False
             self.on_profile = False
-        if key in ("Next", "Tiếp", "Tiếp theo"):
+        if key in ("Next", "Tiếp", "Tiếp theo") or "y1v" in skey or "q0w" in skey or "q0y" in skey:
             self.next_left -= 1
-        if key in ("Post", "Đăng"):
+        if key in ("Post", "Đăng") or "tjf" in skey:
             self.post_clicked = True
 
 # ---------------------------------------------------------------- tests ----
